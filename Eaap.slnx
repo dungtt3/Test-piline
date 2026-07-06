@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Eaap.Api/Eaap.Api.csproj" />
+    <Project Path="src/Eaap.Application/Eaap.Application.csproj" />
+    <Project Path="src/Eaap.Domain/Eaap.Domain.csproj" />
+    <Project Path="src/Eaap.Infrastructure/Eaap.Infrastructure.csproj" />
+    <Project Path="src/Eaap.Sarif/Eaap.Sarif.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Eaap.IntegrationTests/Eaap.IntegrationTests.csproj" />
+    <Project Path="tests/Eaap.UnitTests/Eaap.UnitTests.csproj" />
+  </Folder>
+</Solution>

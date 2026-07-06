@@ -1,0 +1,112 @@
+# WorkflowTemplate cho một analysis job của EAAP.
+# Các bước: fetch-snapshot (tải tarball từ MinIO, giải nén /workspace)
+#           run-analyzer   (chạy adapter theo contract Phần 5)
+#           upload-results (đẩy /results và /artifacts lên MinIO jobs/{jobId}/{analyzerRunId}/)
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: eaap-analysis-job
+spec:
+  entrypoint: main
+  arguments:
+    parameters:
+      - name: job-id
+      - name: analyzer-run-id
+      - name: analyzer-id
+      - name: adapter-image
+      - name: snapshot-key
+      - name: commit-sha
+      - name: minio-endpoint
+      - name: minio-access-key
+      - name: minio-secret-key
+      - name: minio-bucket
+  volumeClaimTemplates:
+    - metadata:
+        name: work
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+  templates:
+    - name: main
+      steps:
+        - - name: fetch-snapshot
+            template: fetch-snapshot
+        - - name: extract-snapshot
+            template: extract-snapshot
+        - - name: run-analyzer
+            template: run-analyzer
+        - - name: upload-results
+            template: upload-results
+
+    # minio/mc has no tar, so download and extraction are separate steps.
+    - name: fetch-snapshot
+      container:
+        image: minio/mc:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - >
+            mc alias set eaap "{{workflow.parameters.minio-endpoint}}"
+            "{{workflow.parameters.minio-access-key}}" "{{workflow.parameters.minio-secret-key}}" &&
+            mc cp "eaap/{{workflow.parameters.minio-bucket}}/{{workflow.parameters.snapshot-key}}" /work/snapshot.tar.gz
+        volumeMounts:
+          - name: work
+            mountPath: /work
+
+    - name: extract-snapshot
+      container:
+        image: alpine:3.20
+        command: ["/bin/sh", "-c"]
+        args:
+          - >
+            mkdir -p /work/workspace /work/results /work/artifacts &&
+            tar -xzf /work/snapshot.tar.gz -C /work/workspace &&
+            rm /work/snapshot.tar.gz &&
+            echo "snapshot extracted: $(find /work/workspace -type f | wc -l) files"
+        volumeMounts:
+          - name: work
+            mountPath: /work
+
+    - name: run-analyzer
+      container:
+        image: "{{workflow.parameters.adapter-image}}"
+        # Adapter images are imported into the cluster with `k3d image import`;
+        # IfNotPresent stops kubelet from trying to pull the :latest tag from Docker Hub.
+        imagePullPolicy: IfNotPresent
+        # EAAP adapters standardize their entrypoint at /eaap-entrypoint.sh so Argo's
+        # emissary executor does not need registry access to resolve the image config.
+        command: ["/eaap-entrypoint.sh"]
+        env:
+          - name: EAAP_JOB_ID
+            value: "{{workflow.parameters.job-id}}"
+          - name: EAAP_ANALYZER_RUN_ID
+            value: "{{workflow.parameters.analyzer-run-id}}"
+          - name: EAAP_SNAPSHOT_COMMIT
+            value: "{{workflow.parameters.commit-sha}}"
+        volumeMounts:
+          - name: work
+            mountPath: /workspace
+            subPath: workspace
+            readOnly: true
+          - name: work
+            mountPath: /results
+            subPath: results
+          - name: work
+            mountPath: /artifacts
+            subPath: artifacts
+
+    - name: upload-results
+      container:
+        image: minio/mc:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - >
+            mc alias set eaap "{{workflow.parameters.minio-endpoint}}"
+            "{{workflow.parameters.minio-access-key}}" "{{workflow.parameters.minio-secret-key}}" &&
+            base="eaap/{{workflow.parameters.minio-bucket}}/jobs/{{workflow.parameters.job-id}}/{{workflow.parameters.analyzer-run-id}}" &&
+            (mc cp --recursive /work/results/ "$base/" || echo "no results to upload") &&
+            (mc cp --recursive /work/artifacts/ "$base/artifacts/" || echo "no artifacts to upload")
+        volumeMounts:
+          - name: work
+            mountPath: /work

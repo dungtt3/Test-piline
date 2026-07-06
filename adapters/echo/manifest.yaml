@@ -1,0 +1,9 @@
+id: echo                      # smoke-test adapter, not a real analyzer
+name: EchoAnalyzer
+version: "1.0.0"
+image: eaap/adapter-echo:latest
+mode: native-sarif
+timeoutSeconds: 120
+resources:
+  cpu: "0.5"
+  memory: 256Mi

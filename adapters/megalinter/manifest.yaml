@@ -1,0 +1,9 @@
+id: megalinter                # unique, lowercase
+name: MegaLinter
+version: "1.0.0"
+image: eaap/adapter-megalinter:latest
+mode: native-sarif            # native-sarif | converter | query
+timeoutSeconds: 1800
+resources:
+  cpu: "2"
+  memory: 4Gi

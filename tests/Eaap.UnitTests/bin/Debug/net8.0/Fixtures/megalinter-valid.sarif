@@ -1,0 +1,90 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "ESLint",
+          "version": "8.57.0",
+          "informationUri": "https://eslint.org",
+          "rules": [
+            {
+              "id": "no-unused-vars",
+              "shortDescription": { "text": "Disallow unused variables" }
+            },
+            {
+              "id": "semi",
+              "shortDescription": { "text": "Require or disallow semicolons" }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "no-unused-vars",
+          "level": "warning",
+          "message": { "text": "'x' is assigned a value but never used." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/index.js" },
+                "region": { "startLine": 1, "endLine": 1 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "semi",
+          "level": "warning",
+          "message": { "text": "Missing semicolon." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/index.js" },
+                "region": { "startLine": 1, "endLine": 1 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "semi",
+          "level": "warning",
+          "message": { "text": "Missing semicolon." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/index.js" },
+                "region": { "startLine": 1, "endLine": 1 }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tool": {
+        "driver": {
+          "name": "Bandit",
+          "version": "1.7.8",
+          "informationUri": "https://bandit.readthedocs.io"
+        }
+      },
+      "results": [
+        {
+          "ruleId": "B105",
+          "level": "error",
+          "message": { "text": "Possible hardcoded password: 'hunter2'" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/settings.py" },
+                "region": { "startLine": 12, "endLine": 12 }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
