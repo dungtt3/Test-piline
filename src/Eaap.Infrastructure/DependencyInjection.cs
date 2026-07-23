@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IGitClient, GitCliClient>();
         services.AddScoped<ISnapshotService, SnapshotService>();
         services.AddScoped<SarifIngestionService>();
+        services.AddScoped<MetricsIngestionService>();
 
         var opa = configuration.GetSection(OpaOptions.SectionName).Get<OpaOptions>() ?? new OpaOptions();
         services.AddHttpClient<IQualityGate, OpaQualityGate>(client =>

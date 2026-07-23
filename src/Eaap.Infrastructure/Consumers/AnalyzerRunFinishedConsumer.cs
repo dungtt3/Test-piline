@@ -20,6 +20,7 @@ public class AnalyzerRunFinishedConsumer(
     EaapDbContext db,
     IObjectStorage storage,
     SarifIngestionService ingestionService,
+    MetricsIngestionService metricsIngestionService,
     IQualityGate qualityGate,
     ILogger<AnalyzerRunFinishedConsumer> logger) : IConsumer<AnalyzerRunFinished>
 {
@@ -67,8 +68,43 @@ public class AnalyzerRunFinishedConsumer(
             }
         }
 
+        if (run.Status == AnalyzerRunStatus.Succeeded && !string.IsNullOrEmpty(message.MetricsArtifactPath))
+        {
+            await IngestMetricsAsync(run, message.MetricsArtifactPath, context.CancellationToken);
+        }
+
         await db.SaveChangesAsync(context.CancellationToken);
         await CloseJobIfFinishedAsync(context, run.JobId);
+    }
+
+    /// <summary>
+    /// metrics.json is optional and advisory: a missing or malformed file is logged and skipped,
+    /// never a reason to fail an analyzer run that produced valid SARIF.
+    /// </summary>
+    private async Task IngestMetricsAsync(AnalyzerRun run, string metricsPath, CancellationToken ct)
+    {
+        try
+        {
+            if (!await storage.ExistsAsync(metricsPath, ct))
+            {
+                return;
+            }
+
+            await using var metricsStream = await storage.DownloadAsync(metricsPath, ct);
+            var metricSet = await metricsIngestionService.IngestAsync(run, metricsStream, ct);
+            if (metricSet is null)
+            {
+                logger.LogWarning("metrics.json of run {AnalyzerRunId} contained no numeric metric", run.Id);
+                return;
+            }
+
+            logger.LogInformation("Ingested {Count} metrics for run {AnalyzerRunId}",
+                metricSet.Metrics.Count, run.Id);
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(e, "Failed to ingest metrics.json for run {AnalyzerRunId}, continuing", run.Id);
+        }
     }
 
     private async Task CloseJobIfFinishedAsync(ConsumeContext context, Guid jobId)

@@ -95,10 +95,16 @@ public class ArgoPollingService(
                     continue;
                 }
 
-                var sarifPath = $"jobs/{job.Id}/{run.Id}/{run.AnalyzerId}.sarif";
+                // upload-results copies /work/results recursively, so both artifacts land under this prefix.
+                var resultsPrefix = $"jobs/{job.Id}/{run.Id}";
                 var runStatus = status.IsSucceeded ? "Succeeded" : "Failed";
                 await publishEndpoint.Publish(
-                    new AnalyzerRunFinished(run.Id, job.Id, runStatus, status.IsSucceeded ? sarifPath : null), ct);
+                    new AnalyzerRunFinished(
+                        run.Id,
+                        job.Id,
+                        runStatus,
+                        status.IsSucceeded ? $"{resultsPrefix}/{run.AnalyzerId}.sarif" : null,
+                        status.IsSucceeded ? $"{resultsPrefix}/metrics.json" : null), ct);
                 logger.LogInformation("Workflow {Workflow} finished ({Phase}); reported run {RunId}",
                     job.ArgoWorkflowName, status.Phase, run.Id);
             }

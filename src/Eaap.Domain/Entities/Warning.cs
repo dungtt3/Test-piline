@@ -18,6 +18,9 @@ public class Warning
     /// <summary>SHA256 dedup fingerprint, see build spec section 6.</summary>
     public string Fingerprint { get; set; } = string.Empty;
 
+    /// <summary>True when this fingerprint had no active baseline in the repository at ingest time.</summary>
+    public bool IsNew { get; set; }
+
     /// <summary>Original SARIF result object (jsonb) — source of truth.</summary>
     public string SarifRaw { get; set; } = "{}";
 

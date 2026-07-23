@@ -33,3 +33,9 @@ public enum WarningLevel
     Warning,
     Error
 }
+
+public enum BaselineStatus
+{
+    Active,
+    Resolved
+}

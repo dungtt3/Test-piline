@@ -10,3 +10,7 @@ Các mục phát hiện trong lúc build nhưng không làm theo Phần 11 của
 - Adapter Trivy, Semgrep (Phase 3); runtime/Prometheus adapter.
 - Multi-tenant, webhook từ Git provider, scheduled scans, trend/technical debt/Grafana.
 - Áp dụng `timeoutSeconds` và `resources` từ manifest vào WorkflowTemplate (hiện template dùng mặc định).
+
+## Phát hiện trong Phase 2
+
+- Xoay vòng mật khẩu role `grafana_ro` (hiện là giá trị dev cố định trong migration — ADR-010) trước khi mở Grafana ra ngoài môi trường lab.
