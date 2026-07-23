@@ -55,7 +55,16 @@
 - [x] `deploy/k3d/build-adapter.ps1|.sh` tổng quát hoá cho nhiều adapter + build context repo root
 - [x] AC: 13 unit test (2 fixture thật đúng passed/failed/skipped; file rác → null + lý do; XML hỏng; `<error>` tính là fail; file/line → location; nhiều testsuite; SARIF ghi ra file có BOM vẫn qua validator)
 - [x] Nghiệm thu thật: chạy adapter trên thư mục có cả 3 fixture → exit 0, quét đệ quy, bỏ qua file rác, tổng hợp 6 test; không có report → exit 0 + `tests.total=0`
-## M3 — Adapter coverage ⏳
+## M3 — Adapter coverage ✅
+- [x] `src/Eaap.Adapters.Coverage` + `adapters/coverage/` (cùng khuôn M2, ADR-007); đăng ký vào registry
+- [x] Parse Cobertura (ưu tiên) và lcov; **merge bằng tổng lines-covered/lines-valid, KHÔNG trung bình tỷ lệ**
+- [x] Có cả Cobertura lẫn lcov → chỉ dùng Cobertura (tránh đếm đôi cùng một lần chạy)
+- [x] `coverage.file.low` cho file dưới `COVERAGE_FILE_THRESHOLD` (default 50), trần 200 result + `coverage.files.truncated`, sắp xếp file tệ nhất trước để phần bị cắt là phần ít quan trọng
+- [x] Class partial dùng chung filename → mỗi dòng chỉ đếm 1 lần
+- [x] `metrics.json` chỉ ghi chiều nào thực sự đo được (không có branch → không ghi `coverage.branch`)
+- [x] Fixtures: Cobertura **thật** từ coverlet (cắt gọn, tính lại root cho nhất quán), lcov, + 2 file merge 9/10 và 1/90
+- [x] AC: 16 unit test — merge ra **10%** đúng chứ không phải 45.56% nếu trung bình tỷ lệ; threshold; truncation; lcov đủ line/branch/method
+- [x] Nghiệm thu thật: 4 kịch bản chạy adapter (merge / lcov+threshold / ưu tiên Cobertura / không có report) đều exit 0 và đúng số
 ## M4 — Workflow step run-tests + .eaap/config.yaml ⏳
 ## M5 — Dedup cross-job + baseline + API ⏳
 ## M6 — Gate per-repository ⏳
