@@ -1,5 +1,7 @@
 # WorkflowTemplate cho một analysis job của EAAP.
 # Các bước: fetch-snapshot (tải tarball từ MinIO, giải nén /workspace)
+#           run-tests      (TÙY CHỌN, theo .eaap/config.yaml — sinh report vào
+#                           /workspace/.eaap/test-results và /workspace/.eaap/coverage)
 #           run-analyzer   (chạy adapter theo contract Phần 5)
 #           upload-results (đẩy /results và /artifacts lên MinIO jobs/{jobId}/{analyzerRunId}/)
 apiVersion: argoproj.io/v1alpha1
@@ -20,6 +22,13 @@ spec:
       - name: minio-access-key
       - name: minio-secret-key
       - name: minio-bucket
+      # Test step (Phần 7). Mặc định tắt để job Phase 1 chạy y như cũ.
+      - name: test-enabled
+        value: "false"
+      - name: test-image
+        value: "alpine:3.20"
+      - name: test-command
+        value: "true"
   volumeClaimTemplates:
     - metadata:
         name: work
@@ -35,6 +44,14 @@ spec:
             template: fetch-snapshot
         - - name: extract-snapshot
             template: extract-snapshot
+        - - name: run-tests
+            template: run-tests
+            when: "{{workflow.parameters.test-enabled}} == true"
+            # Test that fails is a RESULT, not a broken pipeline: the test-report adapter turns
+            # failing tests into warnings. Only an unusable image / timeout (an Argo "error",
+            # not a "failed") is allowed to stop the workflow.
+            continueOn:
+              failed: true
         - - name: run-analyzer
             template: run-analyzer
         - - name: upload-results
@@ -67,6 +84,22 @@ spec:
         volumeMounts:
           - name: work
             mountPath: /work
+
+    # Chạy test theo lệnh repo khai báo trong .eaap/config.yaml. Khác run-analyzer ở chỗ
+    # /workspace mount GHI ĐƯỢC, vì test cần ghi report vào /workspace/.eaap/.
+    - name: run-tests
+      container:
+        image: "{{workflow.parameters.test-image}}"
+        command: ["/bin/sh", "-c"]
+        args:
+          - >
+            mkdir -p /workspace/.eaap/test-results /workspace/.eaap/coverage &&
+            cd /workspace &&
+            {{workflow.parameters.test-command}}
+        volumeMounts:
+          - name: work
+            mountPath: /workspace
+            subPath: workspace
 
     - name: run-analyzer
       container:

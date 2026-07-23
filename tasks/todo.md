@@ -65,7 +65,13 @@
 - [x] Fixtures: Cobertura **thật** từ coverlet (cắt gọn, tính lại root cho nhất quán), lcov, + 2 file merge 9/10 và 1/90
 - [x] AC: 16 unit test — merge ra **10%** đúng chứ không phải 45.56% nếu trung bình tỷ lệ; threshold; truncation; lcov đủ line/branch/method
 - [x] Nghiệm thu thật: 4 kịch bản chạy adapter (merge / lcov+threshold / ưu tiên Cobertura / không có report) đều exit 0 và đúng số
-## M4 — Workflow step run-tests + .eaap/config.yaml ⏳
+## M4 — Workflow step run-tests + .eaap/config.yaml ✅
+- [x] `EaapRepoConfig`/`RepoTestConfig` + port `IRepoConfigReader` (Application); `RepoConfigReader` đọc thẳng `.eaap/config.yaml` từ tarball snapshot trên MinIO, không cần clone lại — YamlDotNet (ADR-008)
+- [x] Chịu lỗi: thiếu file / YAML hỏng / khai báo nửa vời (`enabled: true` nhưng thiếu `command`) → không chạy test, KHÔNG chặn job
+- [x] WorkflowTemplate thêm step `run-tests` với `when: test-enabled == true`, mount `/workspace` **ghi được** (khác analyzer mount ro); `continueOn.failed: true` để test fail không làm fail workflow, nhưng lỗi image/timeout (Argo "error") vẫn fail đúng như spec
+- [x] Tham số test luôn được gửi, mặc định `test-enabled=false` → job Phase 1 submit workflow y hệt cũ
+- [x] AC: 9 unit test parser + 2 test consumer (có config → `ArgoSubmitRequest.Test` runnable; không config → `Test == null`)
+- [x] **Bug test bắt được:** `TrimStart('.', '/')` xoá luôn dấu chấm của `.eaap` → config không bao giờ khớp, hỏng cả đường production; đã sửa thành chỉ strip tiền tố `./` và thêm test khoá lại
 ## M5 — Dedup cross-job + baseline + API ⏳
 ## M6 — Gate per-repository ⏳
 ## M7 — TrendPoint + Grafana ⏳

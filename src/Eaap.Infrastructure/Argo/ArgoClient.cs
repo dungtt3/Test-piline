@@ -38,19 +38,7 @@ public class ArgoClient : IArgoClient
             {
                 generateName = $"eaap-{request.AnalyzerId}-",
                 labels = $"eaap.io/job-id={request.JobId},eaap.io/analyzer-run-id={request.AnalyzerRunId}",
-                parameters = new[]
-                {
-                    $"job-id={request.JobId}",
-                    $"analyzer-run-id={request.AnalyzerRunId}",
-                    $"analyzer-id={request.AnalyzerId}",
-                    $"adapter-image={request.AdapterImage}",
-                    $"snapshot-key={request.SnapshotKey}",
-                    $"commit-sha={request.CommitSha}",
-                    $"minio-endpoint={_minioOptions.ClusterEndpoint}",
-                    $"minio-access-key={_minioOptions.AccessKey}",
-                    $"minio-secret-key={_minioOptions.SecretKey}",
-                    $"minio-bucket={_minioOptions.Bucket}"
-                }
+                parameters = BuildParameters(request)
             }
         };
 
@@ -61,6 +49,34 @@ public class ArgoClient : IArgoClient
         var workflow = await response.Content.ReadFromJsonAsync<WorkflowResponse>(JsonOptions, ct)
             ?? throw new InvalidOperationException("Argo returned an empty workflow response.");
         return workflow.Metadata.Name;
+    }
+
+    /// <summary>
+    /// The template always declares the test parameters, so they are always sent. When the
+    /// repository has no runnable test step, test-enabled stays "false" and Argo skips the
+    /// run-tests step — phase 1 jobs submit exactly the same workflow shape as before.
+    /// </summary>
+    private string[] BuildParameters(ArgoSubmitRequest request)
+    {
+        var test = request.Test;
+        var runsTests = test?.IsRunnable == true;
+
+        return
+        [
+            $"job-id={request.JobId}",
+            $"analyzer-run-id={request.AnalyzerRunId}",
+            $"analyzer-id={request.AnalyzerId}",
+            $"adapter-image={request.AdapterImage}",
+            $"snapshot-key={request.SnapshotKey}",
+            $"commit-sha={request.CommitSha}",
+            $"minio-endpoint={_minioOptions.ClusterEndpoint}",
+            $"minio-access-key={_minioOptions.AccessKey}",
+            $"minio-secret-key={_minioOptions.SecretKey}",
+            $"minio-bucket={_minioOptions.Bucket}",
+            $"test-enabled={(runsTests ? "true" : "false")}",
+            $"test-image={(runsTests ? test!.Image : "alpine:3.20")}",
+            $"test-command={(runsTests ? test!.Command : "true")}"
+        ];
     }
 
     public async Task<ArgoWorkflowStatus> GetWorkflowStatusAsync(string workflowName, CancellationToken ct = default)
