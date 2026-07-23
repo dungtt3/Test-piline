@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Junk fixture: well-formed XML that is not a test report at all.
+     The adapter must log and skip this, never crash. -->
+<configuration>
+  <appSettings>
+    <add key="retries" value="3" />
+    <add key="endpoint" value="https://example.invalid/api" />
+  </appSettings>
+</configuration>

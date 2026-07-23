@@ -1,0 +1,10 @@
+id: test-report               # unique, lowercase
+name: TestReportConverter
+version: "1.0.0"
+image: eaap/adapter-test-report:latest
+mode: converter               # native-sarif | converter | query
+emitsMetrics: true            # writes /results/metrics.json with the tests.* keys
+timeoutSeconds: 300
+resources:
+  cpu: "0.5"
+  memory: 512Mi

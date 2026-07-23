@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="1" tests="3" time="0.089" timestamp="2026-07-23T18:07:01.145728+07:00" hostname="TMS-DUNGTT3"><testcase classname="test_cart" name="test_add_item_increases_total" time="0.001" /><testcase classname="test_cart" name="test_discount_is_applied" time="0.001"><failure message="AssertionError: discount was not applied to the cart total&#10;assert (2 + 2) == 5">def test_discount_is_applied():
+&gt;       assert 2 + 2 == 5, "discount was not applied to the cart total"
+E       AssertionError: discount was not applied to the cart total
+E       assert (2 + 2) == 5
+
+test_cart.py:9: AssertionError</failure></testcase><testcase classname="test_cart" name="test_tax_rounding" time="0.000"><skipped type="pytest.skip" message="pricing rules still under review">./test_cart.py:12: pricing rules still under review</skipped></testcase></testsuite></testsuites>

@@ -47,7 +47,14 @@
 - [x] AC: 6 unit test parse (hợp lệ/thiếu key/không phải object/giá trị không phải số/JSON rác) + 2 integration test (có metrics → MetricSet đúng 7 key; không có metrics → Succeeded, 0 MetricSet)
 - [x] Nghiệm thu thật: `dotnet ef database update` sạch trên DB `eaap`; `grafana_ro` SELECT được nhưng INSERT/UPDATE bị từ chối
 
-## M2 — Adapter test-report ⏳
+## M2 — Adapter test-report ✅
+- [x] `src/Eaap.Adapters.TestReport` (parser + SARIF builder tách riêng để unit test được) — ADR-007; tái dụng `Eaap.Sarif`, không tự viết model SARIF
+- [x] `adapters/test-report/`: Dockerfile (context = repo root), entrypoint.sh → `/eaap-entrypoint.sh`, manifest.yaml (`mode: converter`, `emitsMetrics: true`); đăng ký vào `Adapters` registry
+- [x] Parse TRX + JUnit; **đếm từ element chứ không tin attribute tổng kết** — TRX thật của `dotnet test` ghi `notExecuted="0"` dù có 1 test NotExecuted
+- [x] Fixtures **thật**: TRX từ `dotnet test --logger trx`, JUnit từ pytest `--junitxml` (đã khử đường dẫn tuyệt đối), + 1 XML rác
+- [x] `deploy/k3d/build-adapter.ps1|.sh` tổng quát hoá cho nhiều adapter + build context repo root
+- [x] AC: 13 unit test (2 fixture thật đúng passed/failed/skipped; file rác → null + lý do; XML hỏng; `<error>` tính là fail; file/line → location; nhiều testsuite; SARIF ghi ra file có BOM vẫn qua validator)
+- [x] Nghiệm thu thật: chạy adapter trên thư mục có cả 3 fixture → exit 0, quét đệ quy, bỏ qua file rác, tổng hợp 6 test; không có report → exit 0 + `tests.total=0`
 ## M3 — Adapter coverage ⏳
 ## M4 — Workflow step run-tests + .eaap/config.yaml ⏳
 ## M5 — Dedup cross-job + baseline + API ⏳
