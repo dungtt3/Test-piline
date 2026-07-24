@@ -28,6 +28,17 @@ public class SarifIngestionService(EaapDbContext db, IOptions<AdapterOptions> ad
         var isSecurity = adapterOptions.Value.Registry.TryGetValue(run.AnalyzerId, out var adapter)
             && adapter.IsSecurity;
 
+        // Fingerprints muted by an in-effect suppression for this repository (phase 3 section 5).
+        var repositoryId = await db.AnalysisJobs
+            .Where(j => j.Id == run.JobId)
+            .Select(j => j.Snapshot!.RepositoryId)
+            .FirstAsync(ct);
+        var now = DateTimeOffset.UtcNow;
+        var suppressedFingerprints = (await db.Suppressions
+            .Where(s => s.RepositoryId == repositoryId && (s.ExpiresAt == null || s.ExpiresAt > now))
+            .Select(s => s.Fingerprint)
+            .ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
+
         // Warnings already stored for this job (e.g. from other analyzer runs) participate in dedup.
         var keptByFingerprint = await db.Warnings
             .Where(w => w.JobId == run.JobId)
@@ -69,6 +80,7 @@ public class SarifIngestionService(EaapDbContext db, IOptions<AdapterOptions> ad
                     SecuritySeverity = security.Severity,
                     Cve = security.Cve,
                     Cwe = security.Cwe,
+                    IsSuppressed = suppressedFingerprints.Contains(fingerprint),
                     SarifRaw = JsonConvert.SerializeObject(result, RawSerializerSettings),
                     CreatedAt = DateTimeOffset.UtcNow
                 };

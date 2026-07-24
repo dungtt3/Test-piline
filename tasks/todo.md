@@ -127,7 +127,11 @@
 - [x] `WarningDto` thêm `SecuritySeverity`/`Cve`/`Cwe`/`IsSuppressed`; warnings endpoint filter `securitySeverity=High,Critical` (comma list) + `cwe=` + `includeSuppressed` (default hidden)
 - [x] `GET /jobs/{id}/security-summary` → `bySeverity` (đủ 5 mức, mặc định 0), `byCwe`/`byCve` (đếm, sắp giảm dần); loại suppressed
 - [x] AC (integration): SARIF 4 finding qua analyzer `trivy` → filter Critical,High=3; cwe=CWE-79=1; summary critical=1/high=2/medium=1; byCwe có 502/79/89; byCve có CVE-2021-44228
-## M6 — Suppression ⏳
+## M6 — Suppression ✅
+- [x] Ingest đánh dấu `IsSuppressed` khi fingerprint khớp Suppression còn hiệu lực (ExpiresAt null hoặc tương lai)
+- [x] Gate summary loại suppressed (error/warning/newWarning đều tính trên non-suppressed); Trend `WarningTotal` loại suppressed, đếm vào `WarningSuppressed`
+- [x] CRUD API: `POST/GET/DELETE /repositories/{id}/suppressions` — validate reason ≥10 ký tự + fingerprint phải tồn tại trong warning/baseline của repo; 409 nếu đã có; `?includeExpired`
+- [x] AC (integration): job1 error→GateFailed; suppress X; job2 X IsSuppressed, gate Succeeded, trend WarningSuppressed=1, warnings ẩn (includeSuppressed hiện lại); hết hạn → job3 tính lại GateFailed; + test validate reason ngắn/fingerprint lạ → 400
 ## M7 — Gate security ⏳
 ## M8 — Demo + README Phase 3 ⏳
 

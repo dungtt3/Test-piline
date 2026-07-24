@@ -33,8 +33,11 @@ public class TrendService(EaapDbContext db, ILogger<TrendService> logger)
             return;
         }
 
-        var warningTotal = await db.Warnings.CountAsync(w => w.JobId == jobId, ct);
-        var errorCount = await db.Warnings.CountAsync(w => w.JobId == jobId && w.Level == WarningLevel.Error, ct);
+        // Suppressed findings are tracked separately, not in the headline total (phase 3 section 5).
+        var warningTotal = await db.Warnings.CountAsync(w => w.JobId == jobId && !w.IsSuppressed, ct);
+        var warningSuppressed = await db.Warnings.CountAsync(w => w.JobId == jobId && w.IsSuppressed, ct);
+        var errorCount = await db.Warnings.CountAsync(
+            w => w.JobId == jobId && w.Level == WarningLevel.Error && !w.IsSuppressed, ct);
 
         var metrics = new Dictionary<string, double>();
         foreach (var set in await db.MetricSets.Where(m => m.JobId == jobId).ToListAsync(ct))
@@ -54,6 +57,7 @@ public class TrendService(EaapDbContext db, ILogger<TrendService> logger)
             WarningTotal = warningTotal,
             WarningNew = baseline.NewCount,
             WarningResolved = baseline.ResolvedCount,
+            WarningSuppressed = warningSuppressed,
             ErrorCount = errorCount,
             CoverageLine = metrics.TryGetValue("coverage.line", out var coverage) ? coverage : null,
             TestsTotal = metrics.TryGetValue("tests.total", out var total) ? (int)total : null,

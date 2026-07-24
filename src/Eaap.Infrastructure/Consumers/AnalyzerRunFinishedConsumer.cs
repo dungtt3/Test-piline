@@ -155,14 +155,14 @@ public class AnalyzerRunFinishedConsumer(
 
     private async Task<GateResult> EvaluateGateAsync(AnalysisJob job, CancellationToken ct)
     {
-        // Suppressed warnings do not exist yet (phase 3); all warnings of the job count here.
+        // Suppressed findings are excluded from the summary sent to OPA (phase 3 section 5).
         var counts = await db.Warnings
-            .Where(w => w.JobId == job.Id)
+            .Where(w => w.JobId == job.Id && !w.IsSuppressed)
             .GroupBy(w => new { w.RuleId, w.Level })
             .Select(g => new { g.Key.RuleId, g.Key.Level, Count = g.Count() })
             .ToListAsync(ct);
 
-        var newWarningCount = await db.Warnings.CountAsync(w => w.JobId == job.Id && w.IsNew, ct);
+        var newWarningCount = await db.Warnings.CountAsync(w => w.JobId == job.Id && w.IsNew && !w.IsSuppressed, ct);
 
         var summary = new GateSummary(
             counts.Where(c => c.Level == WarningLevel.Error).Sum(c => c.Count),

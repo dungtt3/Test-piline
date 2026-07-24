@@ -56,6 +56,16 @@ public record SecuritySummaryResponse(
 
 public record CountItem(string Key, int Count);
 
+public record CreateSuppressionRequest(string Fingerprint, string Reason, DateTimeOffset? ExpiresAt);
+
+public record SuppressionDto(
+    Guid Id,
+    string Fingerprint,
+    string Reason,
+    string CreatedBy,
+    DateTimeOffset? ExpiresAt,
+    DateTimeOffset CreatedAt);
+
 public record BaselineDto(
     Guid Id,
     string Fingerprint,
