@@ -132,7 +132,10 @@
 - [x] Gate summary loại suppressed (error/warning/newWarning đều tính trên non-suppressed); Trend `WarningTotal` loại suppressed, đếm vào `WarningSuppressed`
 - [x] CRUD API: `POST/GET/DELETE /repositories/{id}/suppressions` — validate reason ≥10 ký tự + fingerprint phải tồn tại trong warning/baseline của repo; 409 nếu đã có; `?includeExpired`
 - [x] AC (integration): job1 error→GateFailed; suppress X; job2 X IsSuppressed, gate Succeeded, trend WarningSuppressed=1, warnings ẩn (includeSuppressed hiện lại); hết hạn → job3 tính lại GateFailed; + test validate reason ngắn/fingerprint lạ → 400
-## M7 — Gate security ⏳
+## M7 — Gate security ✅
+- [x] `GateSummary` thêm `SecurityCounts` (critical/high/medium/low, non-suppressed); `GateThresholds` thêm `MaxSecurityCritical`/`MaxSecurityHigh`; OpaOptions mặc định 0 (nghiêm)
+- [x] rego thêm 2 rule: fail nếu critical > maxSecurityCritical, high > maxSecurityHigh; consumer tính security counts + resolve binding
+- [x] AC: direct gate (critical/high fail mặc định, medium/low không fail, nới ngưỡng cho phép) + integration (trivy critical → GateFailed "security.critical=1 > max 0" → suppress → Succeeded)
 ## M8 — Demo + README Phase 3 ⏳
 
 ---

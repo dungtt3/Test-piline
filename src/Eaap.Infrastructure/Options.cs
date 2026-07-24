@@ -43,6 +43,11 @@ public class OpaOptions
     public int MaxNewWarnings { get; set; } = -1;      // negative = unlimited
     public double MinCoverageLine { get; set; } = 0;   // 0 = no coverage floor
     public int MaxTestsFailed { get; set; } = 0;
+
+    // Strict by default (build spec phase 3 section 6): any critical or high security finding
+    // fails the gate. Enterprises relax these per-repo via GatePolicyBinding.
+    public int MaxSecurityCritical { get; set; } = 0;
+    public int MaxSecurityHigh { get; set; } = 0;
 }
 
 public class ArgoOptions

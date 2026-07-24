@@ -164,11 +164,23 @@ public class AnalyzerRunFinishedConsumer(
 
         var newWarningCount = await db.Warnings.CountAsync(w => w.JobId == job.Id && w.IsNew && !w.IsSuppressed, ct);
 
+        var securityCounts = await db.Warnings
+            .Where(w => w.JobId == job.Id && !w.IsSuppressed && w.SecuritySeverity != SecuritySeverity.None)
+            .GroupBy(w => w.SecuritySeverity)
+            .Select(g => new { Severity = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        int CountOf(SecuritySeverity s) => securityCounts.FirstOrDefault(x => x.Severity == s)?.Count ?? 0;
+
         var summary = new GateSummary(
             counts.Where(c => c.Level == WarningLevel.Error).Sum(c => c.Count),
             counts.Where(c => c.Level == WarningLevel.Warning).Sum(c => c.Count),
             newWarningCount,
-            counts.GroupBy(c => c.RuleId).ToDictionary(g => g.Key, g => g.Sum(c => c.Count)));
+            counts.GroupBy(c => c.RuleId).ToDictionary(g => g.Key, g => g.Sum(c => c.Count)),
+            new SecurityCounts(
+                CountOf(SecuritySeverity.Critical),
+                CountOf(SecuritySeverity.High),
+                CountOf(SecuritySeverity.Medium),
+                CountOf(SecuritySeverity.Low)));
 
         var metrics = await GatherMetricsAsync(job.Id, ct);
         var thresholds = await ResolveThresholdsAsync(job.SnapshotId, ct);
@@ -210,7 +222,9 @@ public class AnalyzerRunFinishedConsumer(
             defaults.MaxWarnings,
             defaults.MaxNewWarnings,
             defaults.MinCoverageLine,
-            defaults.MaxTestsFailed);
+            defaults.MaxTestsFailed,
+            defaults.MaxSecurityCritical,
+            defaults.MaxSecurityHigh);
 
         var repositoryId = await db.Snapshots
             .Where(s => s.Id == snapshotId)
@@ -230,7 +244,9 @@ public class AnalyzerRunFinishedConsumer(
             MaxWarnings = t.TryGetValue("maxWarnings", out var mw) ? (int)mw : thresholds.MaxWarnings,
             MaxNewWarnings = t.TryGetValue("maxNewWarnings", out var mnw) ? (int)mnw : thresholds.MaxNewWarnings,
             MinCoverageLine = t.TryGetValue("minCoverageLine", out var mcl) ? mcl : thresholds.MinCoverageLine,
-            MaxTestsFailed = t.TryGetValue("maxTestsFailed", out var mtf) ? (int)mtf : thresholds.MaxTestsFailed
+            MaxTestsFailed = t.TryGetValue("maxTestsFailed", out var mtf) ? (int)mtf : thresholds.MaxTestsFailed,
+            MaxSecurityCritical = t.TryGetValue("maxSecurityCritical", out var msc) ? (int)msc : thresholds.MaxSecurityCritical,
+            MaxSecurityHigh = t.TryGetValue("maxSecurityHigh", out var msh) ? (int)msh : thresholds.MaxSecurityHigh
         };
     }
 }

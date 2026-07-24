@@ -45,6 +45,21 @@ failures contains msg if {
     msg := sprintf("tests.failed=%d > max %d", [failed, input.thresholds.maxTestsFailed])
 }
 
+# --- Security (phase 3) ---------------------------------------------------
+# Strict by default (thresholds 0): any critical or high finding fails the gate.
+
+failures contains msg if {
+    input.summary.security.critical > input.thresholds.maxSecurityCritical
+    msg := sprintf("security.critical=%d > max %d",
+        [input.summary.security.critical, input.thresholds.maxSecurityCritical])
+}
+
+failures contains msg if {
+    input.summary.security.high > input.thresholds.maxSecurityHigh
+    msg := sprintf("security.high=%d > max %d",
+        [input.summary.security.high, input.thresholds.maxSecurityHigh])
+}
+
 # --- Coverage (phase 2) ---------------------------------------------------
 # Only when a coverage floor is configured (> 0) AND coverage was measured.
 

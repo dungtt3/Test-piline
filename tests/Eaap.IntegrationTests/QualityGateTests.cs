@@ -46,14 +46,19 @@ public class QualityGateTests(EaapApiFactory factory)
     private static readonly IReadOnlyDictionary<string, int> NoRules = new Dictionary<string, int>();
 
     // Lenient defaults matching the platform config: warnings 100, new-warnings disabled,
-    // no coverage floor, no failing tests allowed.
-    private static GateThresholds Defaults(int maxWarnings = 100) => new(maxWarnings, -1, 0, 0);
+    // no coverage floor, no failing tests, and strict security (0 critical/high).
+    private static GateThresholds Defaults(int maxWarnings = 100) => new(maxWarnings, -1, 0, 0, 0, 0);
+
+    private static GateSummary Sum(
+        int errors = 0, int warnings = 0, int newWarnings = 0,
+        IReadOnlyDictionary<string, int>? byRule = null, SecurityCounts? security = null) =>
+        new(errors, warnings, newWarnings, byRule ?? NoRules, security ?? SecurityCounts.Zero);
 
     [Fact]
     public async Task MaxWarningsZero_WarningsOnly_GateFails()
     {
         var result = await NewGate().EvaluateAsync(
-            new GateSummary(0, 2, 0, new Dictionary<string, int> { ["semi"] = 2 }),
+            Sum(0, 2, 0, new Dictionary<string, int> { ["semi"] = 2 }),
             NoMetrics, Defaults(maxWarnings: 0));
 
         Assert.False(result.Passed);
@@ -64,7 +69,7 @@ public class QualityGateTests(EaapApiFactory factory)
     public async Task DefaultThresholds_FewWarnings_GatePasses()
     {
         var result = await NewGate().EvaluateAsync(
-            new GateSummary(0, 12, 0, new Dictionary<string, int> { ["semi"] = 12 }),
+            Sum(0, 12, 0, new Dictionary<string, int> { ["semi"] = 12 }),
             NoMetrics, Defaults());
 
         Assert.True(result.Passed);
@@ -76,7 +81,7 @@ public class QualityGateTests(EaapApiFactory factory)
     {
         // AC (b): newWarningCount=1 with maxNewWarnings=0.
         var result = await NewGate().EvaluateAsync(
-            new GateSummary(0, 5, 1, NoRules), NoMetrics, Defaults() with { MaxNewWarnings = 0 });
+            Sum(0, 5, 1, NoRules), NoMetrics, Defaults() with { MaxNewWarnings = 0 });
 
         Assert.False(result.Passed);
         Assert.Contains(result.Violations, v => v.Contains("newWarningCount=1 > max 0"));
@@ -87,7 +92,7 @@ public class QualityGateTests(EaapApiFactory factory)
     {
         // Default maxNewWarnings=-1: a first scan where everything is new must still pass.
         var result = await NewGate().EvaluateAsync(
-            new GateSummary(0, 5, 5, NoRules), NoMetrics, Defaults());
+            Sum(0, 5, 5, NoRules), NoMetrics, Defaults());
 
         Assert.True(result.Passed);
     }
@@ -99,11 +104,11 @@ public class QualityGateTests(EaapApiFactory factory)
         var metrics = new Dictionary<string, double> { ["coverage.line"] = 82.5 };
 
         var pass = await NewGate().EvaluateAsync(
-            new GateSummary(0, 0, 0, NoRules), metrics, Defaults() with { MinCoverageLine = 80 });
+            Sum(0, 0, 0, NoRules), metrics, Defaults() with { MinCoverageLine = 80 });
         Assert.True(pass.Passed);
 
         var fail = await NewGate().EvaluateAsync(
-            new GateSummary(0, 0, 0, NoRules), metrics, Defaults() with { MinCoverageLine = 90 });
+            Sum(0, 0, 0, NoRules), metrics, Defaults() with { MinCoverageLine = 90 });
         Assert.False(fail.Passed);
         Assert.Contains(fail.Violations, v => v.Contains("coverage.line=82.5 < min 90"));
     }
@@ -112,7 +117,7 @@ public class QualityGateTests(EaapApiFactory factory)
     public async Task Coverage_MetricMissing_DoesNotFail_ButRecordsSkippedNote()
     {
         var result = await NewGate().EvaluateAsync(
-            new GateSummary(0, 0, 0, NoRules), NoMetrics, Defaults() with { MinCoverageLine = 80 });
+            Sum(0, 0, 0, NoRules), NoMetrics, Defaults() with { MinCoverageLine = 80 });
 
         Assert.True(result.Passed);
         Assert.Contains(result.Violations, v => v.Contains("skipped") && v.Contains("coverage"));
@@ -124,10 +129,43 @@ public class QualityGateTests(EaapApiFactory factory)
         var metrics = new Dictionary<string, double> { ["tests.failed"] = 2, ["tests.total"] = 40 };
 
         var result = await NewGate().EvaluateAsync(
-            new GateSummary(0, 0, 0, NoRules), metrics, Defaults());
+            Sum(0, 0, 0, NoRules), metrics, Defaults());
 
         Assert.False(result.Passed);
         Assert.Contains(result.Violations, v => v.Contains("tests.failed=2 > max 0"));
+    }
+
+    [Fact]
+    public async Task SecurityHighOrCritical_FailsGateByDefault()
+    {
+        var result = await NewGate().EvaluateAsync(
+            Sum(security: new SecurityCounts(Critical: 1, High: 2, Medium: 5, Low: 9)),
+            NoMetrics, Defaults());
+
+        Assert.False(result.Passed);
+        Assert.Contains(result.Violations, v => v.Contains("security.critical=1 > max 0"));
+        Assert.Contains(result.Violations, v => v.Contains("security.high=2 > max 0"));
+    }
+
+    [Fact]
+    public async Task SecurityMediumAndLow_DoNotFailGate()
+    {
+        var result = await NewGate().EvaluateAsync(
+            Sum(security: new SecurityCounts(Critical: 0, High: 0, Medium: 8, Low: 20)),
+            NoMetrics, Defaults());
+
+        Assert.True(result.Passed);
+    }
+
+    [Fact]
+    public async Task SecurityHigh_AllowedWhenThresholdRelaxed()
+    {
+        // Enterprises relax the strict default via a binding.
+        var result = await NewGate().EvaluateAsync(
+            Sum(security: new SecurityCounts(Critical: 0, High: 3, Medium: 0, Low: 0)),
+            NoMetrics, Defaults() with { MaxSecurityHigh = 5 });
+
+        Assert.True(result.Passed);
     }
 
     private async Task<(Guid JobId, Guid RunId)> SeedJobAsync()

@@ -26,7 +26,14 @@ public class OpaQualityGate(HttpClient httpClient, IOptions<OpaOptions> options)
                     errorCount = summary.ErrorCount,
                     warningCount = summary.WarningCount,
                     newWarningCount = summary.NewWarningCount,
-                    byRule = summary.ByRule
+                    byRule = summary.ByRule,
+                    security = new
+                    {
+                        critical = summary.Security.Critical,
+                        high = summary.Security.High,
+                        medium = summary.Security.Medium,
+                        low = summary.Security.Low
+                    }
                 },
                 metrics,
                 thresholds = new
@@ -34,7 +41,9 @@ public class OpaQualityGate(HttpClient httpClient, IOptions<OpaOptions> options)
                     maxWarnings = thresholds.MaxWarnings,
                     maxNewWarnings = thresholds.MaxNewWarnings,
                     minCoverageLine = thresholds.MinCoverageLine,
-                    maxTestsFailed = thresholds.MaxTestsFailed
+                    maxTestsFailed = thresholds.MaxTestsFailed,
+                    maxSecurityCritical = thresholds.MaxSecurityCritical,
+                    maxSecurityHigh = thresholds.MaxSecurityHigh
                 }
             }
         };
