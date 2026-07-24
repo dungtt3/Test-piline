@@ -85,6 +85,26 @@ public class AuthOptions
     public string AdminPassword { get; set; } = string.Empty;
 }
 
+public class NotificationOptions
+{
+    public const string SectionName = "Notifications";
+
+    /// <summary>Base URL used to build the summaryUrl in payloads.</summary>
+    public string PlatformBaseUrl { get; set; } = "http://localhost:5080";
+
+    /// <summary>Retry intervals (seconds) for a failed delivery (production).</summary>
+    public int[] RetryIntervalsSeconds { get; set; } = [5, 25, 125];
+
+    /// <summary>When &gt; 0, use this fixed millisecond interval with RetryLimit instead (tests run fast).</summary>
+    public int RetryIntervalMs { get; set; }
+    public int RetryLimit { get; set; } = 3;
+
+    // SMTP defaults for the Email channel type.
+    public string SmtpHost { get; set; } = "localhost";
+    public int SmtpPort { get; set; } = 25;
+    public string SmtpFrom { get; set; } = "eaap@localhost";
+}
+
 public class AdapterEntry
 {
     public string Image { get; set; } = string.Empty;

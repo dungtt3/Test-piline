@@ -20,3 +20,19 @@ public record AnalyzerRunFinished(
 public record JobFinished(Guid JobId, string Status);
 
 public record GateEvaluated(Guid JobId, bool Passed, string PolicyName);
+
+/// <summary>Published from ingestion when a job introduces new Critical security findings (phase 4).</summary>
+public record NewCriticalSecurityFound(Guid JobId, int Count);
+
+/// <summary>
+/// One notification to deliver to one channel (phase 4 section 6). Fanned out per matching
+/// channel so each delivery retries independently.
+/// </summary>
+public record NotificationDeliveryRequested(
+    Guid ChannelId,
+    string Event,
+    Guid JobId,
+    Guid RepositoryId,
+    string RepositoryName,
+    string Status,
+    DateTimeOffset OccurredAt);

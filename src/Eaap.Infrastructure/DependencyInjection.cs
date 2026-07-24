@@ -56,6 +56,9 @@ public static class DependencyInjection
         services.AddScoped<Trends.TrendService>();
         services.AddScoped<IRepoConfigReader, RepoConfig.RepoConfigReader>();
 
+        services.Configure<NotificationOptions>(configuration.GetSection(NotificationOptions.SectionName));
+        services.AddHttpClient<Notifications.NotificationDispatcher>();
+
         var opa = configuration.GetSection(OpaOptions.SectionName).Get<OpaOptions>() ?? new OpaOptions();
         services.AddHttpClient<IQualityGate, OpaQualityGate>(client =>
             client.BaseAddress = new Uri(opa.BaseUrl));
@@ -69,6 +72,9 @@ public static class DependencyInjection
             bus.SetKebabCaseEndpointNameFormatter();
             bus.AddConsumer<Consumers.AnalyzerRunFinishedConsumer>();
             bus.AddConsumer<Consumers.JobRequestedConsumer>();
+            bus.AddConsumer<Notifications.NotificationTriggerConsumer>();
+            bus.AddConsumer<Notifications.NotificationDeliveryConsumer, Notifications.NotificationDeliveryConsumerDefinition>();
+            bus.AddConsumer<Notifications.NotificationFaultConsumer>();
 
             bus.UsingRabbitMq((context, cfg) =>
             {

@@ -135,6 +135,15 @@ public class AnalyzerRunFinishedConsumer(
             // Cross-job dedup runs before the gate so newWarningCount is available to it (M6).
             baseline = await baselineService.ProcessAsync(job.Id, context.CancellationToken);
 
+            // New critical security findings trigger a dedicated notification event (phase 4 section 6).
+            var newCritical = await db.Warnings.CountAsync(
+                w => w.JobId == job.Id && w.IsNew && !w.IsSuppressed
+                    && w.SecuritySeverity == SecuritySeverity.Critical, context.CancellationToken);
+            if (newCritical > 0)
+            {
+                await context.Publish(new NewCriticalSecurityFound(job.Id, newCritical), context.CancellationToken);
+            }
+
             var gate = await EvaluateGateAsync(job, context.CancellationToken);
             job.Status = gate.Passed ? JobStatus.Succeeded : JobStatus.GateFailed;
             await context.Publish(new GateEvaluated(job.Id, gate.Passed, gate.PolicyName), context.CancellationToken);

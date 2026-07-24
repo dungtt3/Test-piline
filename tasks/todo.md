@@ -170,7 +170,12 @@
 - [x] Endpoints: `/auth/login`, `/auth/tokens` (POST/DELETE), `/users` (GET/POST Admin), `/users/{id}/role` (PUT Admin)
 - [x] AC: 7 unit test cơ chế token (JWT roundtrip/hết hạn/sai secret, BCrypt, API token hash/prefix); integration RBAC matrix (Viewer read 200/write 403, Maintainer write 201, users Admin-only), 401 khi anonymous, login thật → JWT dùng được / sai mật khẩu 401
 - [x] `TestAuthHandler` (Testing) giữ 33 test hành vi cũ chạy (default Admin) — không phải sửa
-## M6 — Notification Center ⏳
+## M6 — Notification Center ✅
+- [x] Kênh Webhook (HMAC-SHA256 `X-Eaap-Signature`), Slack (Block Kit), Email (MailKit) — ADR-014; suppress advisory MailKit NU1902 (chỉ kết nối SMTP operator cấu hình)
+- [x] `NewCriticalSecurityFound` publish từ ingestion (warning IsNew+Critical); trigger consumer nghe GateEvaluated/JobFinished/NewCriticalSecurityFound → fan-out per-channel `NotificationDeliveryRequested`
+- [x] Retry MassTransit (5s/25s/125s, cấu hình được); hết retry → `Fault<T>` → `NotificationDeliveryLog`
+- [x] API: CRUD `/repositories/{id}/notifications` + `POST /notifications/{id}/test`
+- [x] AC: 8 unit (HMAC verify, Slack Block Kit 3 field, email, repo-name); 3 integration WireMock (payload+HMAC verify, disabled không gửi, 500×2 rồi 200 → retry OK không log lỗi)
 ## M7 — Webhook GitHub/GitLab ⏳
 ## M8 — Demo tổng + README v4 → tag v1.0.0 ⏳
 

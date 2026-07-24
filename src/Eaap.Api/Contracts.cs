@@ -72,6 +72,11 @@ public record UserDto(Guid Id, string Email, string DisplayName, string[] Roles,
 
 public record SetRoleRequest(string[] Roles);
 
+public record CreateNotificationRequest(string Type, Dictionary<string, object>? Config, string[] Triggers, bool Enabled);
+
+public record NotificationChannelDto(
+    Guid Id, Guid? RepositoryId, string Type, string[] Triggers, bool Enabled, DateTimeOffset CreatedAt);
+
 public record CreateSuppressionRequest(string Fingerprint, string Reason, DateTimeOffset? ExpiresAt);
 
 public record SuppressionDto(

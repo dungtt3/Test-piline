@@ -85,6 +85,7 @@ var api = app.MapGroup("/api/v1").RequireAuthorization();
 api.MapRepositoryEndpoints();
 api.MapJobEndpoints();
 api.MapUserEndpoints();
+api.MapNotificationEndpoints();
 
 app.Run();
 

@@ -1,0 +1,9 @@
+# ADR-014: Notification Center — MailKit + suppress advisory NU1902
+
+- **Bối cảnh:** Spec Phase 4 Phần 6 yêu cầu Notification Center: kênh Webhook (ký HMAC-SHA256), Slack (Block Kit), Email (SMTP) — cần thư viện gửi email. `MailKit` là thư viện SMTP de-facto của .NET nhưng mọi bản hiện tại dính advisory `GHSA-9j88-vvj5-vhgr` (moderate: DoS khi server SMTP trả response độc hại). Build bật `-warnaserror` + NuGetAudit → advisory thành lỗi.
+- **Quyết định:**
+  1. Dùng `MailKit` 4.8.0; **suppress đúng advisory** `NU1902/GHSA-9j88-vvj5-vhgr` bằng `<NuGetAuditSuppress>` trong `Eaap.Infrastructure.csproj`, không tắt audit toàn cục. Lý do: EAAP chỉ kết nối tới SMTP host **do operator cấu hình** (không phải server tùy ý từ input untrusted), nên vector tấn công của advisory không áp dụng.
+  2. Fan-out per-channel: consumer trigger (nghe `GateEvaluated`/`JobFinished`/`NewCriticalSecurityFound`) tìm kênh khớp (repo-scope hoặc global, enabled, trigger match) rồi publish `NotificationDeliveryRequested` cho **từng** kênh → mỗi delivery retry độc lập.
+  3. Retry bằng MassTransit `UseMessageRetry` (mặc định 5s/25s/125s, cấu hình được để test chạy nhanh); hết retry → MassTransit publish `Fault<T>` → `NotificationFaultConsumer` ghi `NotificationDeliveryLog`.
+- **Nghiệm thu:** unit test HMAC (verify được bằng secret) + formatter Slack/email + derive repo name; integration (WireMock): GateFailed → webhook nhận payload đúng schema + chữ ký HMAC verify được; kênh disabled không nhận gì; receiver trả 500 hai lần rồi 200 → retry thành công, không ghi log lỗi.
+- **Hệ quả:** Email gửi thật qua SMTP chưa test live (formatter đã test); SMTP host cấu hình qua `Notifications:Smtp*`. Slack/webhook đều là HTTP POST nên test chung một đường. Xoay/rà advisory MailKit khi có bản vá — ghi `docs/backlog.md`.

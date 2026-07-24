@@ -95,6 +95,9 @@ public class EaapApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         // A real secret so /auth/login can issue verifiable JWTs; the request pipeline itself
         // authenticates via TestAuthHandler (see below).
         builder.UseSetting("Auth:JwtSecret", "eaap-integration-test-secret-key-01234567890");
+        // Retry notification deliveries almost instantly so the retry test runs fast.
+        builder.UseSetting("Notifications:RetryIntervalMs", "50");
+        builder.UseSetting("Notifications:RetryLimit", "4");
 
         // Replace the bearer handler with a role-injecting test handler so existing tests need no
         // credentials while the RBAC matrix tests select a role via X-Test-Role.

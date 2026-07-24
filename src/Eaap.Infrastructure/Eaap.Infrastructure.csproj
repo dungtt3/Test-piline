@@ -8,11 +8,19 @@
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="3.7.410.5" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="MailKit" Version="4.8.0" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.2.5" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.2" />
     <PackageReference Include="YamlDotNet" Version="16.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- MailKit's moderate advisory (SMTP DoS via crafted server responses) does not apply to our
+         use: we only connect to operator-configured SMTP hosts. Suppressed rather than dropping the
+         de-facto .NET email library (ADR-014). -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-9j88-vvj5-vhgr" />
   </ItemGroup>
 
   <PropertyGroup>
