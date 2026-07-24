@@ -164,7 +164,12 @@
 - [x] rego 2 rule: `runtime.sloViolations > max`, `debt.deltaMinutes > max`; OPA input đủ section summary/metrics/runtime/debt/thresholds
 - [x] Consumer tính sloViolations (warning `slo.*` non-suppressed) + debt total + delta (so TrendPoint gần nhất); binding override 2 key mới
 - [x] AC: direct gate (SLO fail, debt-delta tắt mặc định/bật qua binding, **cross-lifecycle 6 chiều trong 1 result**) + integration "one gate": 1 job 2 analyzer run (coverage 40% + slo violation) → 1 GateEvaluation có cả 2 violation
-## M5 — Auth + RBAC ⏳
+## M5 — Auth + RBAC ✅
+- [x] `AuthTokenService` (BCrypt hash mật khẩu, JWT HS256 8h, API token `eaap_...` + SHA256 hash) — ADR-013; `EaapAuthHandler` custom xử lý cả JWT lẫn API token (phân biệt qua prefix)
+- [x] Policy: `RequireMaintainer` (write), `RequireAdmin` (user/token); toàn bộ `/api/v1/*` yêu cầu auth, `/auth/login`+`/health` anonymous; seed Admin từ env khi User rỗng; Swagger nút Authorize
+- [x] Endpoints: `/auth/login`, `/auth/tokens` (POST/DELETE), `/users` (GET/POST Admin), `/users/{id}/role` (PUT Admin)
+- [x] AC: 7 unit test cơ chế token (JWT roundtrip/hết hạn/sai secret, BCrypt, API token hash/prefix); integration RBAC matrix (Viewer read 200/write 403, Maintainer write 201, users Admin-only), 401 khi anonymous, login thật → JWT dùng được / sai mật khẩu 401
+- [x] `TestAuthHandler` (Testing) giữ 33 test hành vi cũ chạy (default Admin) — không phải sửa
 ## M6 — Notification Center ⏳
 ## M7 — Webhook GitHub/GitLab ⏳
 ## M8 — Demo tổng + README v4 → tag v1.0.0 ⏳

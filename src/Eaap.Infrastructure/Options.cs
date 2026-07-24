@@ -71,6 +71,20 @@ public class AdapterOptions
     public Dictionary<string, AdapterEntry> Registry { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
+public class AuthOptions
+{
+    public const string SectionName = "Auth";
+
+    /// <summary>HS256 signing secret (from env in real deployments); must be at least 32 chars.</summary>
+    public string JwtSecret { get; set; } = string.Empty;
+    public string Issuer { get; set; } = "eaap";
+    public int TokenTtlHours { get; set; } = 8;
+
+    /// <summary>Seed admin created on first startup when the User table is empty.</summary>
+    public string AdminEmail { get; set; } = string.Empty;
+    public string AdminPassword { get; set; } = string.Empty;
+}
+
 public class AdapterEntry
 {
     public string Image { get; set; } = string.Empty;

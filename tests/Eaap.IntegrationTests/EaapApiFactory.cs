@@ -2,8 +2,10 @@ using Amazon.S3;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using Eaap.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.Minio;
@@ -90,6 +92,17 @@ public class EaapApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Minio:SecretKey", "eaap-test-secret");
         builder.UseSetting("Minio:Bucket", Bucket);
         builder.UseSetting("Opa:BaseUrl", OpaBaseUrl);
+        // A real secret so /auth/login can issue verifiable JWTs; the request pipeline itself
+        // authenticates via TestAuthHandler (see below).
+        builder.UseSetting("Auth:JwtSecret", "eaap-integration-test-secret-key-01234567890");
+
+        // Replace the bearer handler with a role-injecting test handler so existing tests need no
+        // credentials while the RBAC matrix tests select a role via X-Test-Role.
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddAuthentication(TestAuthHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
+        });
     }
 
     async Task IAsyncLifetime.DisposeAsync()

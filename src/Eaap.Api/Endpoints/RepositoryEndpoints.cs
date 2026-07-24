@@ -1,3 +1,4 @@
+using Eaap.Api.Auth;
 using Eaap.Application;
 using Eaap.Domain;
 using Eaap.Domain.Entities;
@@ -39,6 +40,7 @@ public static class RepositoryEndpoints
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/v1/repositories/{repository.Id}", repository);
         })
+        .RequireAuthorization(Policies.Maintainer)
         .WithSummary("Register a repository")
         .Produces<Repository>(StatusCodes.Status201Created)
         .ProducesValidationProblem();
@@ -100,6 +102,7 @@ public static class RepositoryEndpoints
             await publishEndpoint.Publish(new JobRequested(job.Id, snapshot.Id, request.Analyzers), ct);
             return Results.Accepted($"/api/v1/jobs/{job.Id}", new ScanAccepted(job.Id));
         })
+        .RequireAuthorization(Policies.Maintainer)
         .WithSummary("Request a scan for a repository")
         .Produces<ScanAccepted>(StatusCodes.Status202Accepted)
         .Produces(StatusCodes.Status404NotFound)
@@ -192,6 +195,7 @@ public static class RepositoryEndpoints
 
             return Results.Ok(new GateBindingResponse(id, binding.PolicyName, binding.Thresholds, binding.UpdatedAt));
         })
+        .RequireAuthorization(Policies.Maintainer)
         .WithSummary("Create or replace the per-repository quality gate binding")
         .Produces<GateBindingResponse>()
         .Produces(StatusCodes.Status404NotFound);
@@ -310,6 +314,7 @@ public static class RepositoryEndpoints
             return Results.Created($"/api/v1/repositories/{id}/suppressions/{suppression.Id}",
                 ToDto(suppression));
         })
+        .RequireAuthorization(Policies.Maintainer)
         .WithSummary("Suppress a finding by fingerprint for this repository")
         .Produces<SuppressionDto>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status404NotFound)
@@ -354,6 +359,7 @@ public static class RepositoryEndpoints
             await db.SaveChangesAsync(ct);
             return Results.NoContent();
         })
+        .RequireAuthorization(Policies.Maintainer)
         .WithSummary("Remove a suppression")
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status404NotFound);

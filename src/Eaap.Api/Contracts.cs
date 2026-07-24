@@ -56,6 +56,22 @@ public record SecuritySummaryResponse(
 
 public record CountItem(string Key, int Count);
 
+public record LoginRequest(string Email, string Password);
+
+public record LoginResponse(string Token, string TokenType, int ExpiresInHours);
+
+public record CreateTokenRequest(string Name, DateTimeOffset? ExpiresAt);
+
+public record CreateTokenResponse(Guid Id, string Token, string Name, DateTimeOffset? ExpiresAt);
+
+public record ApiTokenDto(Guid Id, string Name, DateTimeOffset? ExpiresAt, DateTimeOffset CreatedAt, DateTimeOffset? LastUsedAt);
+
+public record CreateUserRequest(string Email, string Password, string DisplayName, string[] Roles);
+
+public record UserDto(Guid Id, string Email, string DisplayName, string[] Roles, DateTimeOffset CreatedAt);
+
+public record SetRoleRequest(string[] Roles);
+
 public record CreateSuppressionRequest(string Fingerprint, string Reason, DateTimeOffset? ExpiresAt);
 
 public record SuppressionDto(

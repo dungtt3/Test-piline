@@ -25,6 +25,8 @@ public static class DependencyInjection
         services.Configure<ArgoOptions>(configuration.GetSection(ArgoOptions.SectionName));
         services.Configure<AdapterOptions>(options =>
             configuration.GetSection(AdapterOptions.SectionName).Bind(options.Registry));
+        services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.SectionName));
+        services.AddSingleton<IAuthTokenService, Auth.AuthTokenService>();
 
         // EnableDynamicJson is required by Npgsql 8+ to map CLR collections/POCOs to jsonb columns.
         services.AddSingleton(_ =>
