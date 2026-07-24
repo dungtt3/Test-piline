@@ -1,6 +1,6 @@
-# EAAP — Engineering Analysis Automation Platform (Phase 1 + 2 + 3)
+# EAAP — Engineering Analysis Automation Platform (v1.0.0)
 
-Platform phân tích mã nguồn: clone repo → snapshot lên MinIO → (tùy chọn chạy test) → chạy analyzer (OCI adapter) qua Argo Workflows → ingest SARIF thành Warnings + Metric (kèm phân loại security severity/CWE/CVE) → dedup xuyên job bằng baseline → suppression → quality gate per-repo (gồm security) qua OPA → trend trên Grafana. Xây theo `EAAP-AI-Build-Spec-Phase1.md`, `-Phase2.md`, `-Phase3.md`.
+Platform phân tích vòng đời phần mềm theo triết lý **Integrate-first**: clone repo → snapshot lên MinIO → (tùy chọn chạy test) → chạy analyzer (OCI adapter, gồm cả runtime SLO qua Prometheus) → ingest SARIF thành Warnings + Metric (phân loại security severity/CWE/CVE, technical debt) → dedup xuyên job bằng baseline → suppression → **một Quality Gate OPA xuyên suốt source→runtime** (per-repo) → trend trên Grafana → notification + webhook auto-scan. Có auth JWT + RBAC. Xây theo `EAAP-AI-Build-Spec-Phase1.md` … `-Phase4.md`; so sánh: `docs/COMPARISON.md`.
 
 ## Kiến trúc
 
@@ -124,10 +124,43 @@ Invoke-RestMethod -Method Put "http://localhost:5080/api/v1/repositories/$($repo
 
 Warning suppressed vẫn lưu, ẩn mặc định (`?includeSuppressed=true` để xem), **không** tính vào gate và trend (đếm riêng `WarningSuppressed`). Fixture cố tình lỗi ở `tests/fixtures/vulnerable-app/` (secret là **fake** — key ví dụ công khai của AWS).
 
+## Phase 4 — Runtime & Enterprise (v1.0.0)
+
+Adapter `prometheus-slo` (SLO runtime → warning), technical debt, **gate xuyên suốt** (source→runtime trong một `GateEvaluation`), auth JWT + RBAC 3 role, notification (webhook HMAC/Slack/email), webhook auto-scan GitHub/GitLab. Xem `EAAP-AI-Build-Spec-Phase4.md`.
+
+Kịch bản tổng "one gate to rule them all" (≤ 15 lệnh, nối tiếp hạ tầng ở trên):
+
+```powershell
+# 1. Seed admin qua env rồi chạy API (mọi /api/v1/* cần auth; /auth/login, /hooks/*, /health mở)
+$env:Auth__JwtSecret = "change-me-32-chars-minimum-secret-000"; $env:Auth__AdminEmail = "admin@eaap.local"; $env:Auth__AdminPassword = "admin-pass-123"
+$env:ASPNETCORE_ENVIRONMENT = "Development"; dotnet run --project src/Eaap.Api --urls http://localhost:5080
+
+# 2. Đăng nhập lấy JWT, tạo header
+$jwt = (Invoke-RestMethod -Method Post http://localhost:5080/auth/login -ContentType application/json -Body '{"email":"admin@eaap.local","password":"admin-pass-123"}').token
+$h = @{ Authorization = "Bearer $jwt" }
+
+# 3. Build 7 adapter (megalinter/test-report/coverage/trivy/semgrep/gitleaks/prometheus-slo)
+.\deploy\k3d\build-adapter.ps1 -Adapters test-report,coverage,trivy,semgrep,gitleaks,prometheus-slo -SkipImport
+
+# 4. Đăng ký repo + kênh notification webhook (bắn khi GateFailed)
+$repo = Invoke-RestMethod -Method Post http://localhost:5080/api/v1/repositories -Headers $h -ContentType application/json -Body '{"provider":"GitHub","cloneUrl":"https://github.com/<org>/<repo>.git","defaultBranch":"main"}'
+Invoke-RestMethod -Method Post "http://localhost:5080/api/v1/repositories/$($repo.id)/notifications" -Headers $h -ContentType application/json -Body '{"type":"Webhook","config":{"url":"https://webhook.site/<id>","secret":"s3cret"},"triggers":["GateFailed"],"enabled":true}'
+
+# 5. Scan → gate đánh giá 7 chiều trong 1 GateEvaluation; xem debt + security + gate
+$scan = Invoke-RestMethod -Method Post "http://localhost:5080/api/v1/repositories/$($repo.id)/scans" -Headers $h -ContentType application/json -Body '{"analyzers":["trivy"]}'
+Invoke-RestMethod "http://localhost:5080/api/v1/jobs/$($scan.jobId)" -Headers $h
+Invoke-RestMethod "http://localhost:5080/api/v1/repositories/$($repo.id)/debt" -Headers $h
+
+# 6. (CI) Cấp API token dùng thay JWT trong pipeline
+Invoke-RestMethod -Method Post http://localhost:5080/auth/tokens -Headers $h -ContentType application/json -Body '{"name":"ci"}'
+```
+
+`.eaap/config.yaml` có thể khai báo `runtime:` (SLO Prometheus) và `analyzers:` (cho webhook auto-scan). Webhook GitHub: `POST /hooks/github` verify `X-Hub-Signature-256` HMAC với `WebhookSecret` per-repo.
+
 ## Test
 
 ```powershell
-dotnet test          # 80 unit + 28 integration (Testcontainers, cần Docker)
+dotnet test          # 122 unit + 46 integration (Testcontainers + WireMock, cần Docker)
 ```
 
 ## Export OpenAPI
@@ -138,6 +171,7 @@ dotnet build src/Eaap.Api /p:ExportOpenApi=true   # ghi docs/api/openapi.json
 
 ## Tài liệu
 
-- Spec gốc: `EAAP-AI-Build-Spec-Phase1.md`, `-Phase2.md`, `-Phase3.md`
-- Quyết định kiến trúc (ADR): `docs/decisions/` (ADR-001…012)
+- Spec gốc: `EAAP-AI-Build-Spec-Phase1.md` … `-Phase4.md`
+- So sánh với SonarQube/DefectDojo: `docs/COMPARISON.md`
+- Quyết định kiến trúc (ADR): `docs/decisions/` (ADR-001…014)
 - Ngoài phạm vi hiện tại: `docs/backlog.md`

@@ -181,7 +181,20 @@
 - [x] Push default branch → auto-scan; analyzers từ `.eaap/config.yaml` key `analyzers:` (thêm parser) hoặc `Webhook:DefaultAnalyzers`; non-default branch → 200 bỏ qua
 - [x] Idempotent theo commit: đã có job (repo, commit) trong 10 phút → 200, không tạo job mới
 - [x] AC: 4 integration — chữ ký đúng → 202 tạo scan; sai → 401 không tạo job; push 2 lần cùng commit → 1 job; repo lạ → 401; non-default branch bỏ qua
-## M8 — Demo tổng + README v4 → tag v1.0.0 ⏳
+## M8 — Demo tổng + README v4 → tag v1.0.0 ✅
+- [x] README v4: kịch bản "one gate to rule them all" ≤15 lệnh (auth JWT + 7 adapter + gate + notification + API token); tiêu đề v1.0.0
+- [x] `docs/COMPARISON.md`: EAAP v1 vs SonarQube vs DefectDojo theo 7 chiều
+- [x] `docs/api/openapi.json` export lại (auth/users/notifications/debt/hooks)
+- [x] Checklist Phần 10 (=v1.0.0): regression Phase 1+2+3 xanh; mọi `/api/v1/*` cần auth (login/hooks/health mở); 14 ADR; 4 migration; tag v1.0.0
+
+## Review (Phase 4 = v1.0.0)
+
+- **Kết quả:** 8/8 milestone; `dotnet build -warnaserror` 0 warning; **168 test pass** (122 unit + 46 integration Testcontainers+WireMock), tăng từ 108 cuối Phase 3.
+- **Kiến trúc thêm:** `DebtCalculator` + cột debt; `fingerprintKey` cho runtime; adapter `prometheus-slo` (query mode); gate xuyên suốt (runtime SLO + debt-delta); auth JWT+BCrypt+API token+RBAC; Notification Center (webhook HMAC/Slack/email + retry); webhook GitHub/GitLab auto-scan.
+- **ADR mới:** 013 (auth JWT+BCrypt, tách unit/integration test), 014 (MailKit + suppress advisory NU1902).
+- **Bug tìm được:** DebtTest lộ đúng luồng (security analyzer map error→High=60); WireMock scenario initial-state (mapping đầu không dùng WhenStateIs); binding int[] qua UseSetting không ăn → đổi RetryIntervalMs; MailKit advisory NU1902 → suppress đúng ID; raw-string `}}` trong test.
+- **Đơn giản hoá đã biết:** một analyzer/job (ADR-005) nên gate xuyên suốt chứng minh trên job đa-run seed sẵn; e2e live các adapter nặng hoãn (ADR-006). Email SMTP live chưa test (formatter đã test).
+- **Checklist Phần 10:** đủ; tag `v1.0.0`.
 
 ---
 
