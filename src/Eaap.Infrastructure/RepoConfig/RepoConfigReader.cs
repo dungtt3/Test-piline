@@ -48,15 +48,16 @@ public class RepoConfigReader(IObjectStorage storage, ILogger<RepoConfigReader> 
         try
         {
             var document = Deserializer.Deserialize<ConfigDocument>(yaml);
-            if (document?.Test is null)
+            if (document is null)
             {
                 return EaapRepoConfig.None;
             }
 
-            return new EaapRepoConfig(new RepoTestConfig(
-                document.Test.Enabled,
-                Clean(document.Test.Image),
-                Clean(document.Test.Command)));
+            var test = document.Test is null
+                ? null
+                : new RepoTestConfig(document.Test.Enabled, Clean(document.Test.Image), Clean(document.Test.Command));
+            var analyzers = document.Analyzers is { Count: > 0 } ? document.Analyzers : null;
+            return new EaapRepoConfig(test, analyzers);
         }
         catch (YamlDotNet.Core.YamlException)
         {
@@ -106,6 +107,7 @@ public class RepoConfigReader(IObjectStorage storage, ILogger<RepoConfigReader> 
     private sealed class ConfigDocument
     {
         public TestDocument? Test { get; set; }
+        public List<string>? Analyzers { get; set; }
     }
 
     private sealed class TestDocument

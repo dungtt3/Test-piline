@@ -17,6 +17,7 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEaapInfrastructure(builder.Configuration);
+builder.Services.AddScoped<Eaap.Api.Endpoints.WebhookServices>();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddProblemDetails();
@@ -79,6 +80,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 });
 
 app.MapAuthEndpoints();
+app.MapWebhookEndpoints();
 
 // Everything under /api/v1 requires authentication; write endpoints add role policies.
 var api = app.MapGroup("/api/v1").RequireAuthorization();

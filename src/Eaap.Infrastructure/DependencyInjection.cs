@@ -57,6 +57,7 @@ public static class DependencyInjection
         services.AddScoped<IRepoConfigReader, RepoConfig.RepoConfigReader>();
 
         services.Configure<NotificationOptions>(configuration.GetSection(NotificationOptions.SectionName));
+        services.Configure<WebhookOptions>(configuration.GetSection(WebhookOptions.SectionName));
         services.AddHttpClient<Notifications.NotificationDispatcher>();
 
         var opa = configuration.GetSection(OpaOptions.SectionName).Get<OpaOptions>() ?? new OpaOptions();

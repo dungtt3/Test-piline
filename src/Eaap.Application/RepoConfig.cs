@@ -14,11 +14,14 @@ public record RepoTestConfig(bool Enabled, string? Image, string? Command)
 /// The <c>.eaap/config.yaml</c> convention file read from a repository snapshot.
 /// A repository without the file simply gets <see cref="None"/> and no test step.
 /// </summary>
-public record EaapRepoConfig(RepoTestConfig? Test)
+public record EaapRepoConfig(RepoTestConfig? Test, IReadOnlyList<string>? Analyzers = null)
 {
     public static EaapRepoConfig None { get; } = new(Test: null);
 
     public bool RunsTests => Test?.IsRunnable == true;
+
+    /// <summary>Analyzers to run on a webhook-triggered scan; empty falls back to the platform default.</summary>
+    public IReadOnlyList<string> AnalyzerList => Analyzers ?? [];
 }
 
 /// <summary>Reads a repository's EAAP configuration out of its snapshot tarball.</summary>

@@ -176,7 +176,11 @@
 - [x] Retry MassTransit (5s/25s/125s, cấu hình được); hết retry → `Fault<T>` → `NotificationDeliveryLog`
 - [x] API: CRUD `/repositories/{id}/notifications` + `POST /notifications/{id}/test`
 - [x] AC: 8 unit (HMAC verify, Slack Block Kit 3 field, email, repo-name); 3 integration WireMock (payload+HMAC verify, disabled không gửi, 500×2 rồi 200 → retry OK không log lỗi)
-## M7 — Webhook GitHub/GitLab ⏳
+## M7 — Webhook GitHub/GitLab ✅
+- [x] `POST /hooks/github` (verify `X-Hub-Signature-256` HMAC với `Repository.WebhookSecret`) + `/hooks/gitlab` (so `X-Gitlab-Token`); anonymous, đọc raw body, FixedTimeEquals
+- [x] Push default branch → auto-scan; analyzers từ `.eaap/config.yaml` key `analyzers:` (thêm parser) hoặc `Webhook:DefaultAnalyzers`; non-default branch → 200 bỏ qua
+- [x] Idempotent theo commit: đã có job (repo, commit) trong 10 phút → 200, không tạo job mới
+- [x] AC: 4 integration — chữ ký đúng → 202 tạo scan; sai → 401 không tạo job; push 2 lần cùng commit → 1 job; repo lạ → 401; non-default branch bỏ qua
 ## M8 — Demo tổng + README v4 → tag v1.0.0 ⏳
 
 ---

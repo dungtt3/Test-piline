@@ -85,6 +85,17 @@ public class AuthOptions
     public string AdminPassword { get; set; } = string.Empty;
 }
 
+public class WebhookOptions
+{
+    public const string SectionName = "Webhook";
+
+    /// <summary>Analyzers to run when a repo's .eaap/config.yaml does not list any.</summary>
+    public string[] DefaultAnalyzers { get; set; } = ["megalinter"];
+
+    /// <summary>A push for a (repo, commit) already scanned within this window is ignored.</summary>
+    public int IdempotencyWindowMinutes { get; set; } = 10;
+}
+
 public class NotificationOptions
 {
     public const string SectionName = "Notifications";
