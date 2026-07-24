@@ -1,0 +1,60 @@
+# ---- .NET build output ----
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Dd]ebug/
+[Rr]elease/
+[Dd]ebugPublic/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+build/
+bld/
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+# ---- Visual Studio / Rider / VS Code ----
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+*_i.c
+*_p.c
+*.rsp
+
+# ---- Test / coverage results ----
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+# NB: avoid a bare "*.coverage" — on case-insensitive filesystems it also matches
+# the src/Eaap.Adapters.Coverage directory and would ignore its whole source tree.
+/coverage*.json
+/coverage*.xml
+/coverage*.info
+TestResults/
+
+# ---- NuGet ----
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+.nuget/
+
+# ---- OS noise ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# ---- Python virtualenv (fixture generation) ----
+.venv/
+__pycache__/
+*.pyc
