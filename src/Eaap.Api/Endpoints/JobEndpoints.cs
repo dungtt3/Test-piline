@@ -58,6 +58,7 @@ public static class JobEndpoints
             CancellationToken ct,
             string? level,
             string? ruleId,
+            bool? isNew,
             int page = 1,
             int pageSize = 50) =>
         {
@@ -78,6 +79,10 @@ public static class JobEndpoints
             {
                 query = query.Where(w => w.RuleId == ruleId);
             }
+            if (isNew is { } wantNew)
+            {
+                query = query.Where(w => w.IsNew == wantNew);
+            }
 
             var totalCount = await query.CountAsync(ct);
             var items = await query
@@ -86,12 +91,12 @@ public static class JobEndpoints
                 .Take(pageSize)
                 .Select(w => new WarningDto(
                     w.Id, w.AnalyzerRunId, w.RuleId, w.Level.ToString(), w.Message,
-                    w.FilePath, w.StartLine, w.EndLine, w.Fingerprint))
+                    w.FilePath, w.StartLine, w.EndLine, w.Fingerprint, w.IsNew))
                 .ToListAsync(ct);
 
             return Results.Ok(new PagedResult<WarningDto>(items, page, pageSize, totalCount));
         })
-        .WithSummary("List warnings of a job (paged, filterable by level and ruleId)")
+        .WithSummary("List warnings of a job (paged, filterable by level, ruleId and isNew)")
         .Produces<PagedResult<WarningDto>>()
         .Produces(StatusCodes.Status404NotFound);
 

@@ -72,7 +72,13 @@
 - [x] Tham số test luôn được gửi, mặc định `test-enabled=false` → job Phase 1 submit workflow y hệt cũ
 - [x] AC: 9 unit test parser + 2 test consumer (có config → `ArgoSubmitRequest.Test` runnable; không config → `Test == null`)
 - [x] **Bug test bắt được:** `TrimStart('.', '/')` xoá luôn dấu chấm của `.eaap` → config không bao giờ khớp, hỏng cả đường production; đã sửa thành chỉ strip tiền tố `./` và thêm test khoá lại
-## M5 — Dedup cross-job + baseline + API ⏳
+## M5 — Dedup cross-job + baseline + API ✅
+- [x] `BaselineService` chạy trong `CloseJobIfFinishedAsync` **trước gate** (để M6 có newWarningCount); DI scoped
+- [x] Mỗi warning: có baseline Active → `IsNew=false`; chưa có → `IsNew=true` + tạo baseline; đã Resolved mà tái xuất → reactivate + `IsNew=true` (tránh vi phạm unique index)
+- [x] Resolve chỉ trên default branch, chỉ khi `jobAnalyzers ⊇ everSeenAnalyzers` (ADR-009); feature branch chỉ đánh IsNew, không đụng baseline
+- [x] API: `GET /jobs/{id}/warnings?isNew=true|false` (+ cột `IsNew` trong `WarningDto`); `GET /repositories/{id}/baseline?status=` (paged, `BaselineDto`)
+- [x] AC: integration 3 job liên tiếp → job1 5 baseline; job2 1 IsNew + 2 Resolved (chỉ ruleF mới); job3 giống job2 → 0 IsNew, 0 resolve mới; + test API filter isNew và baseline status
+- [x] 3 unit test BaselineService (feature branch không đụng baseline; reactivate; skip resolve khi thiếu analyzer)
 ## M6 — Gate per-repository ⏳
 ## M7 — TrendPoint + Grafana ⏳
 ## M8 — README + tổng kết ⏳

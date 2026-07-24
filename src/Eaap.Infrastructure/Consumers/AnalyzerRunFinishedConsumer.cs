@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Eaap.Application;
 using Eaap.Domain;
+using Eaap.Infrastructure.Baselines;
 using Eaap.Domain.Entities;
 using Eaap.Domain.Events;
 using Eaap.Infrastructure.Ingestion;
@@ -21,6 +22,7 @@ public class AnalyzerRunFinishedConsumer(
     IObjectStorage storage,
     SarifIngestionService ingestionService,
     MetricsIngestionService metricsIngestionService,
+    BaselineService baselineService,
     IQualityGate qualityGate,
     ILogger<AnalyzerRunFinishedConsumer> logger) : IConsumer<AnalyzerRunFinished>
 {
@@ -125,6 +127,9 @@ public class AnalyzerRunFinishedConsumer(
         }
         else
         {
+            // Cross-job dedup runs before the gate so newWarningCount is available to it (M6).
+            await baselineService.ProcessAsync(job.Id, context.CancellationToken);
+
             var gate = await EvaluateGateAsync(job, context.CancellationToken);
             job.Status = gate.Passed ? JobStatus.Succeeded : JobStatus.GateFailed;
             await context.Publish(new GateEvaluated(job.Id, gate.Passed, gate.PolicyName), context.CancellationToken);

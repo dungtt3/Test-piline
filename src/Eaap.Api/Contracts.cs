@@ -42,4 +42,13 @@ public record WarningDto(
     string? FilePath,
     int? StartLine,
     int? EndLine,
-    string Fingerprint);
+    string Fingerprint,
+    bool IsNew);
+
+public record BaselineDto(
+    Guid Id,
+    string Fingerprint,
+    Guid FirstSeenJobId,
+    DateTimeOffset FirstSeenAt,
+    string Status,
+    DateTimeOffset? ResolvedAt);

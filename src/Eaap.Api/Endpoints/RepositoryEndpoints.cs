@@ -102,6 +102,43 @@ public static class RepositoryEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .ProducesValidationProblem();
 
+        repositories.MapGet("/{id:guid}/baseline", async (
+            Guid id,
+            EaapDbContext db,
+            CancellationToken ct,
+            string? status,
+            int page = 1,
+            int pageSize = 50) =>
+        {
+            if (!await db.Repositories.AnyAsync(r => r.Id == id, ct))
+            {
+                return Results.NotFound();
+            }
+
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, 500);
+
+            var query = db.WarningBaselines.AsNoTracking().Where(b => b.RepositoryId == id);
+            if (!string.IsNullOrEmpty(status) && Enum.TryParse<BaselineStatus>(status, ignoreCase: true, out var parsedStatus))
+            {
+                query = query.Where(b => b.Status == parsedStatus);
+            }
+
+            var totalCount = await query.CountAsync(ct);
+            var items = await query
+                .OrderByDescending(b => b.FirstSeenAt).ThenBy(b => b.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(b => new BaselineDto(
+                    b.Id, b.Fingerprint, b.FirstSeenJobId, b.FirstSeenAt, b.Status.ToString(), b.ResolvedAt))
+                .ToListAsync(ct);
+
+            return Results.Ok(new PagedResult<BaselineDto>(items, page, pageSize, totalCount));
+        })
+        .WithSummary("List a repository's warning baseline (paged, filterable by status)")
+        .Produces<PagedResult<BaselineDto>>()
+        .Produces(StatusCodes.Status404NotFound);
+
         return group;
     }
 }

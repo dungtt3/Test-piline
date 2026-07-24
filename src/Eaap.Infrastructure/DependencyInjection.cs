@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<ISnapshotService, SnapshotService>();
         services.AddScoped<SarifIngestionService>();
         services.AddScoped<MetricsIngestionService>();
+        services.AddScoped<Baselines.BaselineService>();
         services.AddScoped<IRepoConfigReader, RepoConfig.RepoConfigReader>();
 
         var opa = configuration.GetSection(OpaOptions.SectionName).Get<OpaOptions>() ?? new OpaOptions();

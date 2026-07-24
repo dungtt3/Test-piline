@@ -16,3 +16,5 @@ Các mục phát hiện trong lúc build nhưng không làm theo Phần 11 của
 - Xoay vòng mật khẩu role `grafana_ro` (hiện là giá trị dev cố định trong migration — ADR-010) trước khi mở Grafana ra ngoài môi trường lab.
 - Nếu tách adapter .NET ra repo riêng: publish `Eaap.Sarif` thành NuGet nội bộ, vì hiện Dockerfile adapter build với context repo root để copy source dùng chung (ADR-007).
 - Đăng ký adapter `echo` vào `Adapters` registry trong appsettings (hiện chỉ truyền qua env khi chạy e2e).
+- Baseline: nếu repo giảm số analyzer vĩnh viễn, baseline của analyzer bị bỏ không tự resolve (ADR-009) — cần cơ chế resolve/expire thủ công.
+- Dedup nâng cao bằng `partialFingerprints` của SARIF (Master Index Phần 5) — giảm churn baseline khi tool đổi format message.
