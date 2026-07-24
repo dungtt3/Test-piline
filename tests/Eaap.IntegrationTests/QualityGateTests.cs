@@ -45,14 +45,17 @@ public class QualityGateTests(EaapApiFactory factory)
     private static readonly IReadOnlyDictionary<string, double> NoMetrics = new Dictionary<string, double>();
     private static readonly IReadOnlyDictionary<string, int> NoRules = new Dictionary<string, int>();
 
-    // Lenient defaults matching the platform config: warnings 100, new-warnings disabled,
-    // no coverage floor, no failing tests, and strict security (0 critical/high).
-    private static GateThresholds Defaults(int maxWarnings = 100) => new(maxWarnings, -1, 0, 0, 0, 0);
+    // Lenient defaults matching the platform config: warnings 100, new-warnings disabled, no
+    // coverage floor, no failing tests, strict security (0), strict SLO (0), debt-delta disabled.
+    private static GateThresholds Defaults(int maxWarnings = 100) =>
+        new(maxWarnings, -1, 0, 0, 0, 0, 0, int.MaxValue);
 
     private static GateSummary Sum(
         int errors = 0, int warnings = 0, int newWarnings = 0,
-        IReadOnlyDictionary<string, int>? byRule = null, SecurityCounts? security = null) =>
-        new(errors, warnings, newWarnings, byRule ?? NoRules, security ?? SecurityCounts.Zero);
+        IReadOnlyDictionary<string, int>? byRule = null, SecurityCounts? security = null,
+        RuntimeInfo? runtime = null, DebtInfo? debt = null) =>
+        new(errors, warnings, newWarnings, byRule ?? NoRules, security ?? SecurityCounts.Zero,
+            runtime ?? RuntimeInfo.Zero, debt ?? DebtInfo.Zero);
 
     [Fact]
     public async Task MaxWarningsZero_WarningsOnly_GateFails()
@@ -166,6 +169,54 @@ public class QualityGateTests(EaapApiFactory factory)
             NoMetrics, Defaults() with { MaxSecurityHigh = 5 });
 
         Assert.True(result.Passed);
+    }
+
+    [Fact]
+    public async Task RuntimeSloViolations_FailGateByDefault()
+    {
+        var result = await NewGate().EvaluateAsync(
+            Sum(runtime: new RuntimeInfo(SloViolations: 1)), NoMetrics, Defaults());
+
+        Assert.False(result.Passed);
+        Assert.Contains(result.Violations, v => v.Contains("runtime.sloViolations=1 > max 0"));
+    }
+
+    [Fact]
+    public async Task DebtDelta_DisabledByDefault_ButFailsWhenBindingTightensIt()
+    {
+        // Debt grew by 90 minutes.
+        var grew = Sum(debt: new DebtInfo(TotalMinutes: 500, DeltaMinutes: 90));
+
+        var byDefault = await NewGate().EvaluateAsync(grew, NoMetrics, Defaults());
+        Assert.True(byDefault.Passed); // maxDebtDeltaMinutes disabled by default
+
+        var enforced = await NewGate().EvaluateAsync(grew, NoMetrics, Defaults() with { MaxDebtDeltaMinutes = 0 });
+        Assert.False(enforced.Passed);
+        Assert.Contains(enforced.Violations, v => v.Contains("debt.deltaMinutes=90 > max 0"));
+    }
+
+    [Fact]
+    public async Task CrossLifecycle_AllDimensionsEvaluatedInOneResult()
+    {
+        // A single evaluation spanning source, coverage, security, runtime and debt, each failing.
+        var summary = Sum(
+            errors: 1,
+            security: new SecurityCounts(Critical: 1, High: 0, Medium: 0, Low: 0),
+            runtime: new RuntimeInfo(SloViolations: 2),
+            debt: new DebtInfo(TotalMinutes: 600, DeltaMinutes: 45));
+        var metrics = new Dictionary<string, double> { ["coverage.line"] = 40, ["tests.failed"] = 3 };
+        var thresholds = Defaults() with { MinCoverageLine = 80, MaxDebtDeltaMinutes = 0 };
+
+        var result = await NewGate().EvaluateAsync(summary, metrics, thresholds);
+
+        Assert.False(result.Passed);
+        // Violations are grouped by source across the whole lifecycle.
+        Assert.Contains(result.Violations, v => v.Contains("errorCount=1"));
+        Assert.Contains(result.Violations, v => v.Contains("coverage.line=40 < min 80"));
+        Assert.Contains(result.Violations, v => v.Contains("tests.failed=3 > max 0"));
+        Assert.Contains(result.Violations, v => v.Contains("security.critical=1 > max 0"));
+        Assert.Contains(result.Violations, v => v.Contains("runtime.sloViolations=2 > max 0"));
+        Assert.Contains(result.Violations, v => v.Contains("debt.deltaMinutes=45 > max 0"));
     }
 
     private async Task<(Guid JobId, Guid RunId)> SeedJobAsync()

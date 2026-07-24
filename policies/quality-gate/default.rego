@@ -60,6 +60,24 @@ failures contains msg if {
         [input.summary.security.high, input.thresholds.maxSecurityHigh])
 }
 
+# --- Runtime & debt (phase 4) ---------------------------------------------
+# One gate across the whole lifecycle: source findings, coverage, tests, security
+# and now runtime SLO breaches plus a technical-debt increase.
+
+failures contains msg if {
+    input.runtime.sloViolations > input.thresholds.maxSloViolations
+    msg := sprintf("runtime.sloViolations=%d > max %d",
+        [input.runtime.sloViolations, input.thresholds.maxSloViolations])
+}
+
+# Debt must not grow. Disabled by default via a very large maxDebtDeltaMinutes; a
+# repo opts in by lowering it (e.g. to 0) in its binding.
+failures contains msg if {
+    input.debt.deltaMinutes > input.thresholds.maxDebtDeltaMinutes
+    msg := sprintf("debt.deltaMinutes=%d > max %d",
+        [input.debt.deltaMinutes, input.thresholds.maxDebtDeltaMinutes])
+}
+
 # --- Coverage (phase 2) ---------------------------------------------------
 # Only when a coverage floor is configured (> 0) AND coverage was measured.
 

@@ -36,6 +36,8 @@ public class OpaQualityGate(HttpClient httpClient, IOptions<OpaOptions> options)
                     }
                 },
                 metrics,
+                runtime = new { sloViolations = summary.Runtime.SloViolations },
+                debt = new { totalMinutes = summary.Debt.TotalMinutes, deltaMinutes = summary.Debt.DeltaMinutes },
                 thresholds = new
                 {
                     maxWarnings = thresholds.MaxWarnings,
@@ -43,7 +45,9 @@ public class OpaQualityGate(HttpClient httpClient, IOptions<OpaOptions> options)
                     minCoverageLine = thresholds.MinCoverageLine,
                     maxTestsFailed = thresholds.MaxTestsFailed,
                     maxSecurityCritical = thresholds.MaxSecurityCritical,
-                    maxSecurityHigh = thresholds.MaxSecurityHigh
+                    maxSecurityHigh = thresholds.MaxSecurityHigh,
+                    maxSloViolations = thresholds.MaxSloViolations,
+                    maxDebtDeltaMinutes = thresholds.MaxDebtDeltaMinutes
                 }
             }
         };

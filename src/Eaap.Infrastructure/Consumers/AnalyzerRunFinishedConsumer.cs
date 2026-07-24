@@ -171,6 +171,12 @@ public class AnalyzerRunFinishedConsumer(
             .ToListAsync(ct);
         int CountOf(SecuritySeverity s) => securityCounts.FirstOrDefault(x => x.Severity == s)?.Count ?? 0;
 
+        // Runtime SLO breaches are the non-suppressed slo.* findings of the job.
+        var sloViolations = await db.Warnings.CountAsync(
+            w => w.JobId == job.Id && !w.IsSuppressed && w.RuleId.StartsWith("slo."), ct);
+
+        var (debtTotal, debtDelta) = await ComputeDebtAsync(job, ct);
+
         var summary = new GateSummary(
             counts.Where(c => c.Level == WarningLevel.Error).Sum(c => c.Count),
             counts.Where(c => c.Level == WarningLevel.Warning).Sum(c => c.Count),
@@ -180,7 +186,9 @@ public class AnalyzerRunFinishedConsumer(
                 CountOf(SecuritySeverity.Critical),
                 CountOf(SecuritySeverity.High),
                 CountOf(SecuritySeverity.Medium),
-                CountOf(SecuritySeverity.Low)));
+                CountOf(SecuritySeverity.Low)),
+            new RuntimeInfo(sloViolations),
+            new DebtInfo(debtTotal, debtDelta));
 
         var metrics = await GatherMetricsAsync(job.Id, ct);
         var thresholds = await ResolveThresholdsAsync(job.SnapshotId, ct);
@@ -197,6 +205,28 @@ public class AnalyzerRunFinishedConsumer(
             EvaluatedAt = DateTimeOffset.UtcNow
         });
         return gate;
+    }
+
+    /// <summary>
+    /// Current job debt (suppressed findings are already 0) and its delta from the most recent
+    /// default-branch trend point. The current job's trend point does not exist yet at gate time.
+    /// </summary>
+    private async Task<(int Total, int Delta)> ComputeDebtAsync(AnalysisJob job, CancellationToken ct)
+    {
+        var total = await db.Warnings.Where(w => w.JobId == job.Id).SumAsync(w => w.DebtMinutes, ct);
+
+        var repositoryId = await db.Snapshots
+            .Where(s => s.Id == job.SnapshotId)
+            .Select(s => s.RepositoryId)
+            .FirstAsync(ct);
+
+        var previousTotal = await db.TrendPoints
+            .Where(t => t.RepositoryId == repositoryId)
+            .OrderByDescending(t => t.CreatedAt)
+            .Select(t => (int?)t.DebtTotalMinutes)
+            .FirstOrDefaultAsync(ct) ?? 0;
+
+        return (total, total - previousTotal);
     }
 
     /// <summary>Merges every metric set of the job; a later run's value wins on a key clash.</summary>
@@ -224,7 +254,9 @@ public class AnalyzerRunFinishedConsumer(
             defaults.MinCoverageLine,
             defaults.MaxTestsFailed,
             defaults.MaxSecurityCritical,
-            defaults.MaxSecurityHigh);
+            defaults.MaxSecurityHigh,
+            defaults.MaxSloViolations,
+            defaults.MaxDebtDeltaMinutes);
 
         var repositoryId = await db.Snapshots
             .Where(s => s.Id == snapshotId)
@@ -246,7 +278,9 @@ public class AnalyzerRunFinishedConsumer(
             MinCoverageLine = t.TryGetValue("minCoverageLine", out var mcl) ? mcl : thresholds.MinCoverageLine,
             MaxTestsFailed = t.TryGetValue("maxTestsFailed", out var mtf) ? (int)mtf : thresholds.MaxTestsFailed,
             MaxSecurityCritical = t.TryGetValue("maxSecurityCritical", out var msc) ? (int)msc : thresholds.MaxSecurityCritical,
-            MaxSecurityHigh = t.TryGetValue("maxSecurityHigh", out var msh) ? (int)msh : thresholds.MaxSecurityHigh
+            MaxSecurityHigh = t.TryGetValue("maxSecurityHigh", out var msh) ? (int)msh : thresholds.MaxSecurityHigh,
+            MaxSloViolations = t.TryGetValue("maxSloViolations", out var msv) ? (int)msv : thresholds.MaxSloViolations,
+            MaxDebtDeltaMinutes = t.TryGetValue("maxDebtDeltaMinutes", out var mdd) ? (int)mdd : thresholds.MaxDebtDeltaMinutes
         };
     }
 }

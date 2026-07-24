@@ -48,6 +48,11 @@ public class OpaOptions
     // fails the gate. Enterprises relax these per-repo via GatePolicyBinding.
     public int MaxSecurityCritical { get; set; } = 0;
     public int MaxSecurityHigh { get; set; } = 0;
+
+    // Phase 4: runtime SLO breaches are strict by default (0); the debt-delta rule is disabled by
+    // default (int.MaxValue) and a repo opts in by lowering it in its binding.
+    public int MaxSloViolations { get; set; } = 0;
+    public int MaxDebtDeltaMinutes { get; set; } = int.MaxValue;
 }
 
 public class ArgoOptions

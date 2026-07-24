@@ -159,7 +159,11 @@
 - [x] Violation → SARIF `slo.<id>` + properties observedValue/threshold/query/**fingerprintKey**; metrics `runtime.slo.<id>.value` cho MỌI SLO; Prometheus down → exit≠0 (analyzer Failed, khác SLO fail)
 - [x] `adapters/prometheus-slo/` (mode query, requiresWorkspace false, category runtime); registry + build-adapter; docker-compose profile `runtime-demo` (prometheus + demo-app) + `deploy/prometheus/prometheus.yml`
 - [x] AC: 13 unit test SloEvaluator; **chạy adapter thật với Prometheus giả** → 1/2 SLO fail đúng, metrics đủ 2 giá trị, exit 0; Prometheus down → exit 1
-## M4 — Gate xuyên suốt ⏳
+## M4 — Gate xuyên suốt ✅
+- [x] `GateSummary` thêm `RuntimeInfo(SloViolations)` + `DebtInfo(TotalMinutes, DeltaMinutes)`; `GateThresholds` thêm `MaxSloViolations` (default 0 nghiêm) + `MaxDebtDeltaMinutes` (default int.MaxValue = tắt)
+- [x] rego 2 rule: `runtime.sloViolations > max`, `debt.deltaMinutes > max`; OPA input đủ section summary/metrics/runtime/debt/thresholds
+- [x] Consumer tính sloViolations (warning `slo.*` non-suppressed) + debt total + delta (so TrendPoint gần nhất); binding override 2 key mới
+- [x] AC: direct gate (SLO fail, debt-delta tắt mặc định/bật qua binding, **cross-lifecycle 6 chiều trong 1 result**) + integration "one gate": 1 job 2 analyzer run (coverage 40% + slo violation) → 1 GateEvaluation có cả 2 violation
 ## M5 — Auth + RBAC ⏳
 ## M6 — Notification Center ⏳
 ## M7 — Webhook GitHub/GitLab ⏳
