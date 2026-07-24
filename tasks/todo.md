@@ -110,10 +110,23 @@
 - [x] Migration duy nhất `Phase3_Security`; apply sạch trên DB thật
 - [x] AC Phần 4 (unit): 13 test — 8 band CVSS + fixture thật Trivy (CVSS 10→Critical, CVE-2021-44228, CWE-502), Semgrep (warning→Medium, CWE-78 từ tag), Gitleaks (error→High), non-security→None, CVSS thắng bất kể category
 
-## M2 — Adapter trivy ⏳
-## M3 — Adapter semgrep ⏳
-## M4 — Adapter gitleaks ⏳
-## M5 — API security filter + summary ⏳
+## M2 — Adapter trivy ✅
+- [x] `adapters/trivy/` native-sarif: `trivy fs --scanners vuln,secret,misconfig --format sarif` + JSON gốc vào /artifacts; entrypoint 32 dòng (≤50)
+- [x] Offline: DB nhúng vào image lúc build, `TRIVY_SKIP_DB_UPDATE=true` runtime (ADR-011)
+- [x] Fixture `tests/fixtures/vulnerable-app/` (dùng chung 3 adapter): package.json lodash CVE, AWS key **fake** (key ví dụ công khai AWS), SQLi Python; README cảnh báo rõ cố tình lỗi + secret fake
+- [x] Verify tĩnh: `sh -n` OK, SARIF native Trivy đã có SecurityEnricher (M1); e2e live hoãn như ADR-006 (image lớn)
+
+## M3 — Adapter semgrep ✅
+- [x] `adapters/semgrep/` native-sarif: `--config /eaap-rules --sarif`, không `--error`; entrypoint 34 dòng; luôn đảm bảo SARIF hợp lệ (rỗng nếu cần)
+- [x] Offline: rule vendored trong image (`p/security-audit`+`p/secrets` best-effort lúc build) + bộ tối thiểu `rules/eaap-python-sqli.yaml` (CWE-89) bắt SQLi vulnerable-app; `SEMGREP_USE_REGISTRY=1` để bật --config auto (ADR-012)
+
+## M4 — Adapter gitleaks ✅
+- [x] `adapters/gitleaks/` native-sarif: `gitleaks detect --no-git --report-format sarif --exit-code 0 --redact`; entrypoint 27 dòng
+- [x] `--no-git` vì snapshot là tarball không có .git (thiết kế Phase 1); manifest ghi chú chỉ quét trạng thái hiện tại; base image override ENTRYPOINT về `/eaap-entrypoint.sh`
+## M5 — API security filter + summary ✅
+- [x] `WarningDto` thêm `SecuritySeverity`/`Cve`/`Cwe`/`IsSuppressed`; warnings endpoint filter `securitySeverity=High,Critical` (comma list) + `cwe=` + `includeSuppressed` (default hidden)
+- [x] `GET /jobs/{id}/security-summary` → `bySeverity` (đủ 5 mức, mặc định 0), `byCwe`/`byCve` (đếm, sắp giảm dần); loại suppressed
+- [x] AC (integration): SARIF 4 finding qua analyzer `trivy` → filter Critical,High=3; cwe=CWE-79=1; summary critical=1/high=2/medium=1; byCwe có 502/79/89; byCve có CVE-2021-44228
 ## M6 — Suppression ⏳
 ## M7 — Gate security ⏳
 ## M8 — Demo + README Phase 3 ⏳

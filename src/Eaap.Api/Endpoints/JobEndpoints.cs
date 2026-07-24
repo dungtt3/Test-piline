@@ -10,6 +10,20 @@ namespace Eaap.Api.Endpoints;
 
 public static class JobEndpoints
 {
+    /// <summary>Parses a comma-separated severity filter like "High,Critical" into enum values.</summary>
+    private static List<SecuritySeverity> ParseSeverities(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+        return [.. raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => Enum.TryParse<SecuritySeverity>(s, ignoreCase: true, out var parsed) ? parsed : (SecuritySeverity?)null)
+            .Where(s => s is not null)
+            .Select(s => s!.Value)
+            .Distinct()];
+    }
+
     public static RouteGroupBuilder MapJobEndpoints(this RouteGroupBuilder group)
     {
         var jobs = group.MapGroup("/jobs").WithTags("Jobs");
@@ -59,6 +73,9 @@ public static class JobEndpoints
             string? level,
             string? ruleId,
             bool? isNew,
+            string? securitySeverity,
+            string? cwe,
+            bool includeSuppressed = false,
             int page = 1,
             int pageSize = 50) =>
         {
@@ -83,6 +100,20 @@ public static class JobEndpoints
             {
                 query = query.Where(w => w.IsNew == wantNew);
             }
+            // Suppressed findings are hidden by default (build spec phase 3 section 5).
+            if (!includeSuppressed)
+            {
+                query = query.Where(w => !w.IsSuppressed);
+            }
+            var severities = ParseSeverities(securitySeverity);
+            if (severities.Count > 0)
+            {
+                query = query.Where(w => severities.Contains(w.SecuritySeverity));
+            }
+            if (!string.IsNullOrEmpty(cwe))
+            {
+                query = query.Where(w => w.Cwe == cwe);
+            }
 
             var totalCount = await query.CountAsync(ct);
             var items = await query
@@ -91,13 +122,56 @@ public static class JobEndpoints
                 .Take(pageSize)
                 .Select(w => new WarningDto(
                     w.Id, w.AnalyzerRunId, w.RuleId, w.Level.ToString(), w.Message,
-                    w.FilePath, w.StartLine, w.EndLine, w.Fingerprint, w.IsNew))
+                    w.FilePath, w.StartLine, w.EndLine, w.Fingerprint, w.IsNew,
+                    w.SecuritySeverity.ToString(), w.Cve, w.Cwe, w.IsSuppressed))
                 .ToListAsync(ct);
 
             return Results.Ok(new PagedResult<WarningDto>(items, page, pageSize, totalCount));
         })
-        .WithSummary("List warnings of a job (paged, filterable by level, ruleId and isNew)")
+        .WithSummary("List warnings of a job (filter by level, ruleId, isNew, securitySeverity, cwe)")
         .Produces<PagedResult<WarningDto>>()
+        .Produces(StatusCodes.Status404NotFound);
+
+        jobs.MapGet("/{id:guid}/security-summary", async (Guid id, EaapDbContext db, CancellationToken ct) =>
+        {
+            if (!await db.AnalysisJobs.AnyAsync(j => j.Id == id, ct))
+            {
+                return Results.NotFound();
+            }
+
+            // Suppressed findings are excluded, consistent with the default warnings view and the gate.
+            var warnings = db.Warnings.AsNoTracking().Where(w => w.JobId == id && !w.IsSuppressed);
+
+            var bySeverity = await warnings
+                .GroupBy(w => w.SecuritySeverity)
+                .Select(g => new { Severity = g.Key, Count = g.Count() })
+                .ToListAsync(ct);
+
+            var byCwe = await warnings
+                .Where(w => w.Cwe != null)
+                .GroupBy(w => w.Cwe!)
+                .Select(g => new CountItem(g.Key, g.Count()))
+                .ToListAsync(ct);
+
+            var byCve = await warnings
+                .Where(w => w.Cve != null)
+                .GroupBy(w => w.Cve!)
+                .Select(g => new CountItem(g.Key, g.Count()))
+                .ToListAsync(ct);
+
+            // Always present all five severities, defaulting to zero.
+            var severityCounts = Enum.GetValues<SecuritySeverity>()
+                .ToDictionary(
+                    s => s.ToString().ToLowerInvariant(),
+                    s => bySeverity.FirstOrDefault(x => x.Severity == s)?.Count ?? 0);
+
+            return Results.Ok(new SecuritySummaryResponse(
+                severityCounts,
+                [.. byCwe.OrderByDescending(c => c.Count).ThenBy(c => c.Key)],
+                [.. byCve.OrderByDescending(c => c.Count).ThenBy(c => c.Key)]));
+        })
+        .WithSummary("Security summary of a job: counts by severity, CWE and CVE")
+        .Produces<SecuritySummaryResponse>()
         .Produces(StatusCodes.Status404NotFound);
 
         jobs.MapGet("/{id:guid}/sarif", async (

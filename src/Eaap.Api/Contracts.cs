@@ -43,7 +43,18 @@ public record WarningDto(
     int? StartLine,
     int? EndLine,
     string Fingerprint,
-    bool IsNew);
+    bool IsNew,
+    string SecuritySeverity,
+    string? Cve,
+    string? Cwe,
+    bool IsSuppressed);
+
+public record SecuritySummaryResponse(
+    IReadOnlyDictionary<string, int> BySeverity,
+    IReadOnlyList<CountItem> ByCwe,
+    IReadOnlyList<CountItem> ByCve);
+
+public record CountItem(string Key, int Count);
 
 public record BaselineDto(
     Guid Id,
