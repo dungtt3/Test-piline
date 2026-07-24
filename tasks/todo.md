@@ -98,6 +98,28 @@
 - [x] `docs/api/openapi.json` export lại — có đủ endpoint mới (`/baseline`, `/gate`, `/trend`)
 - [x] Checklist Phần 12: regression Phase 1 xanh ✔; adapter `megalinter`/`echo` không sửa 1 dòng (last touch = commit init) ✔; 1 migration duy nhất `Phase2_TestQuality` ✔; Grafana provisioning live OK ✔; ADR đủ (007–010) ✔
 
+---
+
+# EAAP Phase 3 — Security & Dependency (theo EAAP-AI-Build-Spec-Phase3.md)
+
+## M1 — Migration Phase3 + SecurityEnricher ✅
+- [x] Domain: enum `SecuritySeverity`; Warning thêm `SecuritySeverity`/`Cve`/`Cwe`/`IsSuppressed`; entity `Suppression` (unique repo+fingerprint, reason ≥10); `TrendPoint.WarningSuppressed`
+- [x] `Eaap.Sarif/SecurityEnricher`: (1) CVSS `security-severity` → band None/Low/Med/High/Crit; (2) thiếu CVSS → map từ level CHỈ khi adapter category=security; (3) non-security → None; CWE regex trong tags/taxa/relationships, CVE regex trong ruleId/message
+- [x] Ingestion resolve category từ registry (`AdapterEntry.Category`) → set SecuritySeverity/Cve/Cwe khi lưu warning
+- [x] manifest 4 adapter cũ thêm `category`; registry appsettings thêm Category + đăng ký trivy/semgrep/gitleaks (security)
+- [x] Migration duy nhất `Phase3_Security`; apply sạch trên DB thật
+- [x] AC Phần 4 (unit): 13 test — 8 band CVSS + fixture thật Trivy (CVSS 10→Critical, CVE-2021-44228, CWE-502), Semgrep (warning→Medium, CWE-78 từ tag), Gitleaks (error→High), non-security→None, CVSS thắng bất kể category
+
+## M2 — Adapter trivy ⏳
+## M3 — Adapter semgrep ⏳
+## M4 — Adapter gitleaks ⏳
+## M5 — API security filter + summary ⏳
+## M6 — Suppression ⏳
+## M7 — Gate security ⏳
+## M8 — Demo + README Phase 3 ⏳
+
+---
+
 ## Review (Phase 2)
 
 - **Kết quả:** 8/8 milestone; `dotnet build -warnaserror` 0 warning; **88 test pass** (67 unit + 21 integration Testcontainers), tăng từ 23 test cuối Phase 1; Grafana provisioning nghiệm thu live (datasource grafana_ro kết nối OK, dashboard nạp).

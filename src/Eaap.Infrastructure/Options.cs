@@ -65,4 +65,9 @@ public class AdapterEntry
 {
     public string Image { get; set; } = string.Empty;
     public int TimeoutSeconds { get; set; } = 1800;
+
+    /// <summary>Mirrors manifest.yaml category: lint|test|coverage|security|dependency|runtime.</summary>
+    public string Category { get; set; } = string.Empty;
+
+    public bool IsSecurity => string.Equals(Category, "security", StringComparison.OrdinalIgnoreCase);
 }

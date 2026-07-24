@@ -17,6 +17,10 @@ public class TrendPoint
     public int WarningTotal { get; set; }
     public int WarningNew { get; set; }
     public int WarningResolved { get; set; }
+
+    /// <summary>Suppressed findings, tracked separately and excluded from WarningTotal (phase 3).</summary>
+    public int WarningSuppressed { get; set; }
+
     public int ErrorCount { get; set; }
 
     public double? CoverageLine { get; set; }

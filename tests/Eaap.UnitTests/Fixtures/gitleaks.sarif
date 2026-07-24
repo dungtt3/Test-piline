@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "gitleaks",
+          "version": "8.18.4",
+          "rules": [
+            {
+              "id": "aws-access-token",
+              "name": "AWS Access Token",
+              "shortDescription": { "text": "Identified a pattern that may indicate AWS credentials" }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "aws-access-token",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": { "text": "aws-access-token detected in config/settings.py" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "config/settings.py" },
+                "region": { "startLine": 3 }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

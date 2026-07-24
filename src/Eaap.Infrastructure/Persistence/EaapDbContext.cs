@@ -37,6 +37,7 @@ public class EaapDbContext(DbContextOptions<EaapDbContext> options) : DbContext(
     public DbSet<WarningBaseline> WarningBaselines => Set<WarningBaseline>();
     public DbSet<GatePolicyBinding> GatePolicyBindings => Set<GatePolicyBinding>();
     public DbSet<TrendPoint> TrendPoints => Set<TrendPoint>();
+    public DbSet<Suppression> Suppressions => Set<Suppression>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -81,8 +82,12 @@ public class EaapDbContext(DbContextOptions<EaapDbContext> options) : DbContext(
             entity.Property(e => e.Level).HasConversion<string>().HasMaxLength(16);
             entity.Property(e => e.Fingerprint).HasMaxLength(64);
             entity.Property(e => e.SarifRaw).HasColumnType("jsonb");
+            entity.Property(e => e.SecuritySeverity).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Cve).HasMaxLength(32);
+            entity.Property(e => e.Cwe).HasMaxLength(16);
             entity.HasIndex(e => e.JobId);
             entity.HasIndex(e => e.Fingerprint);
+            entity.HasIndex(e => e.SecuritySeverity);
             entity.HasOne(e => e.Job).WithMany().HasForeignKey(e => e.JobId);
             entity.HasOne(e => e.AnalyzerRun).WithMany().HasForeignKey(e => e.AnalyzerRunId);
         });
@@ -119,6 +124,16 @@ public class EaapDbContext(DbContextOptions<EaapDbContext> options) : DbContext(
                 .HasColumnType("jsonb")
                 .HasConversion(NumericMapConverter, NumericMapComparer);
             entity.HasIndex(e => e.RepositoryId).IsUnique();
+            entity.HasOne(e => e.Repository).WithMany().HasForeignKey(e => e.RepositoryId);
+        });
+
+        modelBuilder.Entity<Suppression>(entity =>
+        {
+            entity.Property(e => e.Fingerprint).HasMaxLength(64);
+            entity.Property(e => e.Reason).HasMaxLength(2048);
+            entity.Property(e => e.CreatedBy).HasMaxLength(256);
+            entity.HasIndex(e => e.Fingerprint);
+            entity.HasIndex(e => new { e.RepositoryId, e.Fingerprint }).IsUnique();
             entity.HasOne(e => e.Repository).WithMany().HasForeignKey(e => e.RepositoryId);
         });
 

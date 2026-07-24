@@ -39,3 +39,12 @@ public enum BaselineStatus
     Active,
     Resolved
 }
+
+public enum SecuritySeverity
+{
+    None,
+    Low,
+    Medium,
+    High,
+    Critical
+}

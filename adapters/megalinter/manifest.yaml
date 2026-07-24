@@ -3,6 +3,7 @@ name: MegaLinter
 version: "1.0.0"
 image: eaap/adapter-megalinter:latest
 mode: native-sarif            # native-sarif | converter | query
+category: lint            # phase 3: lint|test|coverage|security|dependency|runtime
 timeoutSeconds: 1800
 resources:
   cpu: "2"
