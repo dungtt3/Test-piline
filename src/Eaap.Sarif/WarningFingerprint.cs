@@ -9,6 +9,18 @@ namespace Eaap.Sarif;
 /// </summary>
 public static class WarningFingerprint
 {
+    /// <summary>
+    /// Stable fingerprint for findings that have no file/line and a value-bearing message (e.g. runtime
+    /// SLO warnings): SHA256(ruleId | fingerprintKey). An adapter opts in via properties.fingerprintKey
+    /// so the fingerprint stays constant across runs even though the observed value changes each time.
+    /// </summary>
+    public static string ComputeFromKey(string? ruleId, string fingerprintKey)
+    {
+        var input = string.Join('|', ruleId ?? string.Empty, fingerprintKey).ToLowerInvariant();
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
     public static string Compute(string? ruleId, string? filePath, int? startLine, string? messageText)
     {
         var message = messageText ?? string.Empty;

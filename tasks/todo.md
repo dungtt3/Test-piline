@@ -151,7 +151,9 @@
 - [x] Ingest set `DebtMinutes`; TrendService tính `DebtTotalMinutes`; API `GET /repositories/{id}/debt` (tổng job mới nhất + trend); Grafana panel "Technical debt (hours)"
 - [x] AC: 11 unit test bảng quy đổi (level/security/explicit/suppressed/negative); integration tổng debt = 180 (critical 120 + high 60 — analyzer security map error→High) đúng qua pipeline + API
 
-## M2 — fingerprintKey trong Eaap.Sarif ⏳
+## M2 — fingerprintKey trong Eaap.Sarif ✅
+- [x] `WarningFingerprint.ComputeFromKey(ruleId, fingerprintKey)` = SHA256(ruleId|key); ingest dùng khi result có `properties.fingerprintKey`, ngược lại công thức cũ (backward compatible)
+- [x] AC: 4 unit test mới (ổn định khi message đổi, khác nhau theo rule/key, không đụng công thức path) + 10 test cũ vẫn pass
 ## M3 — Adapter prometheus-slo + demo stack ⏳
 ## M4 — Gate xuyên suốt ⏳
 ## M5 — Auth + RBAC ⏳

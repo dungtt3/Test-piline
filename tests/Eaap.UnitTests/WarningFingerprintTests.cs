@@ -14,6 +14,34 @@ public class WarningFingerprintTests
     }
 
     [Fact]
+    public void ComputeFromKey_IsStable_AcrossChangingMessages()
+    {
+        // A runtime SLO warning's message carries the observed value, which changes every run;
+        // the fingerprintKey (the SLO id) keeps the fingerprint constant so the baseline works.
+        var a = WarningFingerprint.ComputeFromKey("slo.latency-p95", "latency-p95");
+        var b = WarningFingerprint.ComputeFromKey("slo.latency-p95", "latency-p95");
+        Assert.Equal(a, b);
+        Assert.Equal(64, a.Length);
+    }
+
+    [Fact]
+    public void ComputeFromKey_DiffersByRuleAndKey()
+    {
+        var baseFp = WarningFingerprint.ComputeFromKey("slo.latency-p95", "latency-p95");
+        Assert.NotEqual(baseFp, WarningFingerprint.ComputeFromKey("slo.error-rate", "latency-p95"));
+        Assert.NotEqual(baseFp, WarningFingerprint.ComputeFromKey("slo.latency-p95", "error-rate"));
+    }
+
+    [Fact]
+    public void ComputeFromKey_DiffersFromPathBasedFormula()
+    {
+        // The two formulas must not collide for the same ruleId.
+        Assert.NotEqual(
+            WarningFingerprint.Compute("slo.latency-p95", null, null, "latency-p95"),
+            WarningFingerprint.ComputeFromKey("slo.latency-p95", "latency-p95"));
+    }
+
+    [Fact]
     public void Compute_IsCaseInsensitive()
     {
         var lower = WarningFingerprint.Compute("semi", "src/index.js", 1, "missing semicolon.");

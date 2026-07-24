@@ -56,7 +56,13 @@ public class SarifIngestionService(EaapDbContext db, IOptions<AdapterOptions> ad
                 int? startLine = location?.Region?.StartLine > 0 ? location.Region.StartLine : null;
                 int? endLine = location?.Region?.EndLine > 0 ? location.Region.EndLine : null;
 
-                var fingerprint = WarningFingerprint.Compute(ruleId, filePath, startLine, message);
+                // Runtime adapters set properties.fingerprintKey so their fingerprint stays stable even
+                // though the observed value in the message changes each run (backward compatible: no key
+                // -> the phase 1 path/line/message formula).
+                var fingerprintKey = ExtractStringProperty(result, "fingerprintKey");
+                var fingerprint = string.IsNullOrEmpty(fingerprintKey)
+                    ? WarningFingerprint.Compute(ruleId, filePath, startLine, message)
+                    : WarningFingerprint.ComputeFromKey(ruleId, fingerprintKey);
                 if (keptByFingerprint.TryGetValue(fingerprint, out var duplicate))
                 {
                     duplicate.SarifRaw = IncrementDuplicateCount(duplicate.SarifRaw);
@@ -98,6 +104,19 @@ public class SarifIngestionService(EaapDbContext db, IOptions<AdapterOptions> ad
         run.WarningCount = storedForRun;
         await db.SaveChangesAsync(ct);
         return storedForRun;
+    }
+
+    /// <summary>Reads a string property from a SARIF result, or null when absent/non-string.</summary>
+    private static string? ExtractStringProperty(Result result, string key)
+    {
+        try
+        {
+            return result.TryGetProperty(key, out string? value) ? value : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>Reads an adapter-provided properties.debtMinutes, if present and numeric.</summary>
