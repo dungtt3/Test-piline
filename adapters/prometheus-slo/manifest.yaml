@@ -1,0 +1,16 @@
+id: prometheus-slo            # unique, lowercase
+name: PrometheusSlo
+version: "1.0.0"
+image: eaap/adapter-prometheus-slo:latest
+mode: query                   # native-sarif | converter | query
+category: runtime             # phase 3: lint|test|coverage|security|dependency|runtime
+requiresWorkspace: false      # phase 4: query mode does not mount /workspace
+emitsMetrics: true            # writes runtime.slo.<id>.value for every SLO
+timeoutSeconds: 120
+resources:
+  cpu: "0.25"
+  memory: 256Mi
+notes: >
+  Reads the runtime SLO config from EAAP_RUNTIME_CONFIG; violations become
+  slo.<id> SARIF results with a stable fingerprintKey. Prometheus unreachable is
+  an analyzer failure, not an SLO violation.

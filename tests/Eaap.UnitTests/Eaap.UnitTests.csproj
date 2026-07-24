@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Eaap.Adapters.Coverage\Eaap.Adapters.Coverage.csproj" />
+    <ProjectReference Include="..\..\src\Eaap.Adapters.PrometheusSlo\Eaap.Adapters.PrometheusSlo.csproj" />
     <ProjectReference Include="..\..\src\Eaap.Adapters.TestReport\Eaap.Adapters.TestReport.csproj" />
     <ProjectReference Include="..\..\src\Eaap.Sarif\Eaap.Sarif.csproj" />
     <ProjectReference Include="..\..\src\Eaap.Application\Eaap.Application.csproj" />

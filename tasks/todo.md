@@ -154,7 +154,11 @@
 ## M2 — fingerprintKey trong Eaap.Sarif ✅
 - [x] `WarningFingerprint.ComputeFromKey(ruleId, fingerprintKey)` = SHA256(ruleId|key); ingest dùng khi result có `properties.fingerprintKey`, ngược lại công thức cũ (backward compatible)
 - [x] AC: 4 unit test mới (ổn định khi message đổi, khác nhau theo rule/key, không đụng công thức path) + 10 test cũ vẫn pass
-## M3 — Adapter prometheus-slo + demo stack ⏳
+## M3 — Adapter prometheus-slo + demo stack ✅
+- [x] `src/Eaap.Adapters.PrometheusSlo` (query mode): `SloEvaluator` thuần (operator </<=/>/>=/==/!=, violation = điều kiện healthy sai) + `PrometheusClient` (instant query) + Program đọc `EAAP_RUNTIME_CONFIG`
+- [x] Violation → SARIF `slo.<id>` + properties observedValue/threshold/query/**fingerprintKey**; metrics `runtime.slo.<id>.value` cho MỌI SLO; Prometheus down → exit≠0 (analyzer Failed, khác SLO fail)
+- [x] `adapters/prometheus-slo/` (mode query, requiresWorkspace false, category runtime); registry + build-adapter; docker-compose profile `runtime-demo` (prometheus + demo-app) + `deploy/prometheus/prometheus.yml`
+- [x] AC: 13 unit test SloEvaluator; **chạy adapter thật với Prometheus giả** → 1/2 SLO fail đúng, metrics đủ 2 giá trị, exit 0; Prometheus down → exit 1
 ## M4 — Gate xuyên suốt ⏳
 ## M5 — Auth + RBAC ⏳
 ## M6 — Notification Center ⏳

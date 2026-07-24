@@ -25,7 +25,7 @@ for adapter in $ADAPTERS; do
     case "$adapter" in
         # Converter adapters compile .NET sources from src/, so their build context is the
         # repo root instead of the adapter folder (see ADR-007).
-        test-report|coverage)
+        test-report|coverage|prometheus-slo)
             docker build -t "$image" -f "$dockerfile" "$REPO_ROOT"
             ;;
         *)

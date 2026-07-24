@@ -13,7 +13,7 @@ $repoRoot = Resolve-Path "$PSScriptRoot\..\.."
 
 # Converter adapters compile .NET sources from src/, so their build context is the repo root
 # instead of the adapter folder (see ADR-007).
-$rootContextAdapters = @("test-report", "coverage")
+$rootContextAdapters = @("test-report", "coverage", "prometheus-slo")
 
 foreach ($adapter in $Adapters) {
     $image = "eaap/adapter-${adapter}:latest"

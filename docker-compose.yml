@@ -88,6 +88,23 @@ services:
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafanadata:/var/lib/grafana
 
+  # --- Runtime demo stack (phase 4): a Prometheus scraping a demo app that exposes /metrics.
+  #     Lets the prometheus-slo adapter evaluate real SLOs end to end.
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: ["runtime-demo"]
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  demo-app:
+    image: prom/node-exporter:v1.8.2
+    profiles: ["runtime-demo"]
+    ports:
+      - "9100:9100"
+
 volumes:
   pgdata:
   miniodata:

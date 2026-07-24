@@ -1,0 +1,10 @@
+# Demo Prometheus config (phase 4 runtime stack). Scrapes the demo app's /metrics so the
+# prometheus-slo adapter has real series to query. Start with:
+#   docker compose --profile runtime-demo up -d prometheus demo-app
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: demo-app
+    static_configs:
+      - targets: ["demo-app:9100"]
