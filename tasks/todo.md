@@ -93,7 +93,19 @@
 - [x] API `GET /repositories/{id}/trend?from=&to=`
 - [x] AC: integration 2 job → TrendPoint đúng số (WarningTotal/New/Resolved/CoverageLine); API trả đúng thứ tự thời gian; **grafana_ro SELECT TrendPoints được nhưng INSERT/UPDATE bị từ chối (SqlState 42501)**
 - [x] Nghiệm thu Grafana thật (live smoke): container start, datasource `grafana_ro` kết nối Postgres OK, dashboard `eaap-trend` provisioned
-## M8 — README + tổng kết ⏳
+## M8 — README + tổng kết ✅
+- [x] README bổ sung mục Phase 2: demo test+coverage+gate+trend ≤ 12 lệnh + mẫu `.eaap/config.yaml`; tiêu đề + intro cập nhật
+- [x] `docs/api/openapi.json` export lại — có đủ endpoint mới (`/baseline`, `/gate`, `/trend`)
+- [x] Checklist Phần 12: regression Phase 1 xanh ✔; adapter `megalinter`/`echo` không sửa 1 dòng (last touch = commit init) ✔; 1 migration duy nhất `Phase2_TestQuality` ✔; Grafana provisioning live OK ✔; ADR đủ (007–010) ✔
+
+## Review (Phase 2)
+
+- **Kết quả:** 8/8 milestone; `dotnet build -warnaserror` 0 warning; **88 test pass** (67 unit + 21 integration Testcontainers), tăng từ 23 test cuối Phase 1; Grafana provisioning nghiệm thu live (datasource grafana_ro kết nối OK, dashboard nạp).
+- **Kiến trúc thêm:** Metric tách khỏi Warning (`MetricSet` + `metrics.json`); 2 adapter converter .NET (`test-report`, `coverage`) dùng chung `Eaap.Sarif`; baseline xuyên job (`IsNew`/`Resolved`); gate per-repo (coverage/tests/newWarnings, binding); TrendPoint + Grafana.
+- **Sai lệch/đơn giản hoá (đều có ADR):** source adapter .NET trong `src/` build context repo root (ADR-007); YamlDotNet cho `.eaap/config.yaml` (ADR-008); resolve baseline chỉ khi job đủ tập analyzer + baseline chỉ mutate trên default branch (ADR-009); role `grafana_ro` tạo trong migration M1 (ADR-010).
+- **Bug tìm được khi làm/test:** (1) `Dictionary<string,double>` cho jsonb làm vỡ InMemory provider → value converter; (2) `TrimStart('.', '/')` nuốt dấu chấm của `.eaap` → config không khớp cả ở production; (3) rego `%.2f` với JSON int `90` → `%!f(int=90)` → dùng `%v`; (4) `.gitignore` pattern `*.coverage` nuốt thư mục `Eaap.Adapters.Coverage` trên Windows (case-insensitive).
+- **Backward-compat:** contract adapter Phase 1 bất biến; `megalinter`/`echo` chạy nguyên; job không có `.eaap/config.yaml` submit workflow y hệt Phase 1 (test-enabled=false).
+- **Checklist Phần 12:** đủ ✔. Regression Phase 1 (23 test) vẫn xanh trong tổng 88.
 
 ---
 
