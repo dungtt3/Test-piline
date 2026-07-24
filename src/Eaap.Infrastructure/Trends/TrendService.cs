@@ -38,6 +38,8 @@ public class TrendService(EaapDbContext db, ILogger<TrendService> logger)
         var warningSuppressed = await db.Warnings.CountAsync(w => w.JobId == jobId && w.IsSuppressed, ct);
         var errorCount = await db.Warnings.CountAsync(
             w => w.JobId == jobId && w.Level == WarningLevel.Error && !w.IsSuppressed, ct);
+        // Suppressed findings already carry DebtMinutes = 0, so a plain sum is correct.
+        var debtTotal = await db.Warnings.Where(w => w.JobId == jobId).SumAsync(w => w.DebtMinutes, ct);
 
         var metrics = new Dictionary<string, double>();
         foreach (var set in await db.MetricSets.Where(m => m.JobId == jobId).ToListAsync(ct))
@@ -58,6 +60,7 @@ public class TrendService(EaapDbContext db, ILogger<TrendService> logger)
             WarningNew = baseline.NewCount,
             WarningResolved = baseline.ResolvedCount,
             WarningSuppressed = warningSuppressed,
+            DebtTotalMinutes = debtTotal,
             ErrorCount = errorCount,
             CoverageLine = metrics.TryGetValue("coverage.line", out var coverage) ? coverage : null,
             TestsTotal = metrics.TryGetValue("tests.total", out var total) ? (int)total : null,

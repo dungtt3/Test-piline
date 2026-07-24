@@ -221,14 +221,35 @@ public static class RepositoryEndpoints
             var points = await query
                 .OrderBy(t => t.CreatedAt)
                 .Select(t => new TrendPointDto(
-                    t.JobId, t.CommitSha, t.WarningTotal, t.WarningNew, t.WarningResolved,
-                    t.ErrorCount, t.CoverageLine, t.TestsTotal, t.TestsFailed, t.CreatedAt))
+                    t.JobId, t.CommitSha, t.WarningTotal, t.WarningNew, t.WarningResolved, t.WarningSuppressed,
+                    t.ErrorCount, t.CoverageLine, t.TestsTotal, t.TestsFailed, t.DebtTotalMinutes, t.CreatedAt))
                 .ToListAsync(ct);
 
             return Results.Ok(points);
         })
         .WithSummary("Get the repository's trend points over time (for dashboards)")
         .Produces<List<TrendPointDto>>()
+        .Produces(StatusCodes.Status404NotFound);
+
+        repositories.MapGet("/{id:guid}/debt", async (Guid id, EaapDbContext db, CancellationToken ct) =>
+        {
+            if (!await db.Repositories.AnyAsync(r => r.Id == id, ct))
+            {
+                return Results.NotFound();
+            }
+
+            var trend = await db.TrendPoints.AsNoTracking()
+                .Where(t => t.RepositoryId == id)
+                .OrderBy(t => t.CreatedAt)
+                .Select(t => new DebtPointDto(t.JobId, t.CommitSha, t.DebtTotalMinutes, t.CreatedAt))
+                .ToListAsync(ct);
+
+            // Current debt = the most recent default-branch job's total.
+            var current = trend.Count > 0 ? trend[^1].DebtTotalMinutes : 0;
+            return Results.Ok(new DebtResponse(current, Math.Round(current / 60.0, 2), trend));
+        })
+        .WithSummary("Get the repository's current technical debt (latest job) and its trend")
+        .Produces<DebtResponse>()
         .Produces(StatusCodes.Status404NotFound);
 
         repositories.MapPost("/{id:guid}/suppressions", async (

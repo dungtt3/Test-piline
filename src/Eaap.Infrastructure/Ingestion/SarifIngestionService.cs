@@ -64,6 +64,10 @@ public class SarifIngestionService(EaapDbContext db, IOptions<AdapterOptions> ad
                 }
 
                 var security = SecurityEnricher.Enrich(result, sarifRun, isSecurity);
+                var level = MapLevel(result.Level);
+                var isSuppressed = suppressedFingerprints.Contains(fingerprint);
+                var debtMinutes = DebtCalculator.Compute(
+                    level, security.Severity, isSuppressed, ExtractDebtMinutes(result));
 
                 var warning = new Warning
                 {
@@ -71,7 +75,7 @@ public class SarifIngestionService(EaapDbContext db, IOptions<AdapterOptions> ad
                     JobId = run.JobId,
                     AnalyzerRunId = run.Id,
                     RuleId = ruleId,
-                    Level = MapLevel(result.Level),
+                    Level = level,
                     Message = message,
                     FilePath = WarningFingerprint.NormalizePath(filePath),
                     StartLine = startLine,
@@ -80,7 +84,8 @@ public class SarifIngestionService(EaapDbContext db, IOptions<AdapterOptions> ad
                     SecuritySeverity = security.Severity,
                     Cve = security.Cve,
                     Cwe = security.Cwe,
-                    IsSuppressed = suppressedFingerprints.Contains(fingerprint),
+                    IsSuppressed = isSuppressed,
+                    DebtMinutes = debtMinutes,
                     SarifRaw = JsonConvert.SerializeObject(result, RawSerializerSettings),
                     CreatedAt = DateTimeOffset.UtcNow
                 };
@@ -93,6 +98,23 @@ public class SarifIngestionService(EaapDbContext db, IOptions<AdapterOptions> ad
         run.WarningCount = storedForRun;
         await db.SaveChangesAsync(ct);
         return storedForRun;
+    }
+
+    /// <summary>Reads an adapter-provided properties.debtMinutes, if present and numeric.</summary>
+    private static int? ExtractDebtMinutes(Result result)
+    {
+        try
+        {
+            if (result.TryGetProperty("debtMinutes", out int minutes))
+            {
+                return minutes;
+            }
+        }
+        catch
+        {
+            // debtMinutes present but not an int; fall back to the default table.
+        }
+        return null;
     }
 
     private static WarningLevel MapLevel(FailureLevel level) => level switch

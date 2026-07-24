@@ -141,6 +141,26 @@
 - [x] `docs/api/openapi.json` export lại — có `security-summary`, `suppressions` (POST/GET/DELETE)
 - [x] Checklist Phần 9: regression Phase 1+2 xanh ✔; 3 adapter native-sarif, entrypoint 32/34/27 ≤50 ✔; vulnerable-app README cảnh báo + secret fake ✔; ADR offline trivy(011)/semgrep(012) ✔; openapi cập nhật ✔
 
+---
+
+# EAAP Phase 4 — Runtime & Enterprise (theo EAAP-AI-Build-Spec-Phase4.md)
+
+## M1 — Migration Phase4 + Technical Debt ✅
+- [x] Migration duy nhất `Phase4_Enterprise`: `Warning.DebtMinutes`, `TrendPoint.DebtTotalMinutes`, `Repository.WebhookSecret` + bảng User/UserRole/ApiToken/NotificationChannel/NotificationDeliveryLog (dùng ở M5/M6/M7); apply sạch DB thật
+- [x] `DebtCalculator` (Domain, thuần): suppressed=0; explicit `properties.debtMinutes` thắng; security Critical=120/High=60 override; level error=30/warning=10/note=2
+- [x] Ingest set `DebtMinutes`; TrendService tính `DebtTotalMinutes`; API `GET /repositories/{id}/debt` (tổng job mới nhất + trend); Grafana panel "Technical debt (hours)"
+- [x] AC: 11 unit test bảng quy đổi (level/security/explicit/suppressed/negative); integration tổng debt = 180 (critical 120 + high 60 — analyzer security map error→High) đúng qua pipeline + API
+
+## M2 — fingerprintKey trong Eaap.Sarif ⏳
+## M3 — Adapter prometheus-slo + demo stack ⏳
+## M4 — Gate xuyên suốt ⏳
+## M5 — Auth + RBAC ⏳
+## M6 — Notification Center ⏳
+## M7 — Webhook GitHub/GitLab ⏳
+## M8 — Demo tổng + README v4 → tag v1.0.0 ⏳
+
+---
+
 ## Review (Phase 3)
 
 - **Kết quả:** 8/8 milestone; `dotnet build -warnaserror` 0 warning; **108 test pass** (80 unit + 28 integration), tăng từ 88 cuối Phase 2; regression Phase 1+2 nguyên vẹn.

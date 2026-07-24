@@ -38,6 +38,11 @@ public class EaapDbContext(DbContextOptions<EaapDbContext> options) : DbContext(
     public DbSet<GatePolicyBinding> GatePolicyBindings => Set<GatePolicyBinding>();
     public DbSet<TrendPoint> TrendPoints => Set<TrendPoint>();
     public DbSet<Suppression> Suppressions => Set<Suppression>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
+    public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
+    public DbSet<NotificationDeliveryLog> NotificationDeliveryLogs => Set<NotificationDeliveryLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -135,6 +140,46 @@ public class EaapDbContext(DbContextOptions<EaapDbContext> options) : DbContext(
             entity.HasIndex(e => e.Fingerprint);
             entity.HasIndex(e => new { e.RepositoryId, e.Fingerprint }).IsUnique();
             entity.HasOne(e => e.Repository).WithMany().HasForeignKey(e => e.RepositoryId);
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.Property(e => e.Email).HasMaxLength(320);
+            entity.Property(e => e.PasswordHash).HasMaxLength(256);
+            entity.Property(e => e.DisplayName).HasMaxLength(256);
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasMany(e => e.Roles).WithOne(r => r.User).HasForeignKey(r => r.UserId);
+        });
+
+        modelBuilder.Entity<UserRole>(entity =>
+        {
+            entity.Property(e => e.Role).HasConversion<string>().HasMaxLength(16);
+            entity.HasIndex(e => new { e.UserId, e.Role }).IsUnique();
+        });
+
+        modelBuilder.Entity<ApiToken>(entity =>
+        {
+            entity.Property(e => e.TokenHash).HasMaxLength(64);
+            entity.Property(e => e.Name).HasMaxLength(256);
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<NotificationChannel>(entity =>
+        {
+            entity.Property(e => e.Type).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.ConfigJson).HasColumnType("jsonb");
+            entity.Property(e => e.Triggers).HasColumnType("jsonb");
+            entity.HasIndex(e => e.RepositoryId);
+            entity.HasOne(e => e.Repository).WithMany().HasForeignKey(e => e.RepositoryId);
+        });
+
+        modelBuilder.Entity<NotificationDeliveryLog>(entity =>
+        {
+            entity.Property(e => e.Event).HasMaxLength(64);
+            entity.Property(e => e.Error).HasMaxLength(2048);
+            entity.HasIndex(e => e.ChannelId);
+            entity.HasOne(e => e.Channel).WithMany().HasForeignKey(e => e.ChannelId);
         });
 
         modelBuilder.Entity<TrendPoint>(entity =>

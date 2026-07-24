@@ -48,3 +48,17 @@ public enum SecuritySeverity
     High,
     Critical
 }
+
+public enum UserRoleType
+{
+    Viewer,
+    Maintainer,
+    Admin
+}
+
+public enum NotificationType
+{
+    Webhook,
+    Slack,
+    Email
+}

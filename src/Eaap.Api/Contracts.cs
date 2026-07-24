@@ -88,8 +88,14 @@ public record TrendPointDto(
     int WarningTotal,
     int WarningNew,
     int WarningResolved,
+    int WarningSuppressed,
     int ErrorCount,
     double? CoverageLine,
     int? TestsTotal,
     int? TestsFailed,
+    int DebtTotalMinutes,
     DateTimeOffset CreatedAt);
+
+public record DebtResponse(int CurrentTotalMinutes, double CurrentTotalHours, IReadOnlyList<DebtPointDto> Trend);
+
+public record DebtPointDto(Guid JobId, string CommitSha, int DebtTotalMinutes, DateTimeOffset CreatedAt);

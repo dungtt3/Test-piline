@@ -93,6 +93,24 @@
           "rawSql": "SELECT \"CreatedAt\" AS \"time\", \"TestsFailed\" AS \"Tests failed\" FROM \"TrendPoints\" WHERE \"RepositoryId\" = '$repository'::uuid AND \"TestsFailed\" IS NOT NULL AND $__timeFilter(\"CreatedAt\") ORDER BY \"CreatedAt\""
         }
       ]
+    },
+    {
+      "id": 5,
+      "title": "Technical debt (hours)",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "eaap-postgres" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "h", "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "always" } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "eaap-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT \"CreatedAt\" AS \"time\", \"DebtTotalMinutes\" / 60.0 AS \"Technical debt (hours)\" FROM \"TrendPoints\" WHERE \"RepositoryId\" = '$repository'::uuid AND $__timeFilter(\"CreatedAt\") ORDER BY \"CreatedAt\""
+        }
+      ]
     }
   ]
 }

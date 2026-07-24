@@ -33,6 +33,9 @@ public class Warning
     /// <summary>Denormalized at ingest: a matching, in-effect Suppression exists for this fingerprint.</summary>
     public bool IsSuppressed { get; set; }
 
+    /// <summary>Estimated remediation minutes (phase 4); 0 for suppressed findings.</summary>
+    public int DebtMinutes { get; set; }
+
     /// <summary>Original SARIF result object (jsonb) — source of truth.</summary>
     public string SarifRaw { get; set; } = "{}";
 

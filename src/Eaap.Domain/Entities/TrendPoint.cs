@@ -27,5 +27,8 @@ public class TrendPoint
     public int? TestsTotal { get; set; }
     public int? TestsFailed { get; set; }
 
+    /// <summary>Total estimated remediation minutes for the job (phase 4).</summary>
+    public int DebtTotalMinutes { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 }
