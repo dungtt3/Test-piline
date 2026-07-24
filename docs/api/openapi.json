@@ -45,7 +45,7 @@
         "tags": [
           "Jobs"
         ],
-        "summary": "List warnings of a job (paged, filterable by level, ruleId and isNew)",
+        "summary": "List warnings of a job (filter by level, ruleId, isNew, securitySeverity, cwe)",
         "parameters": [
           {
             "name": "id",
@@ -78,6 +78,28 @@
             }
           },
           {
+            "name": "securitySeverity",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cwe",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeSuppressed",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "schema": {
@@ -103,6 +125,40 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WarningDtoPagedResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{id}/security-summary": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Security summary of a job: counts by severity, CWE and CVE",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecuritySummaryResponse"
                 }
               }
             }
@@ -476,6 +532,142 @@
           }
         }
       }
+    },
+    "/api/v1/repositories/{id}/suppressions": {
+      "post": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "Suppress a finding by fingerprint for this repository",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSuppressionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuppressionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "List a repository's suppressions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeExpired",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuppressionDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{id}/suppressions/{suppressionId}": {
+      "delete": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "Remove a suppression",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "suppressionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -572,6 +764,20 @@
         },
         "additionalProperties": false
       },
+      "CountItem": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateRepositoryRequest": {
         "type": "object",
         "properties": {
@@ -584,6 +790,25 @@
           },
           "defaultBranch": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateSuppressionRequest": {
+        "type": "object",
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
@@ -815,6 +1040,65 @@
         },
         "additionalProperties": false
       },
+      "SecuritySummaryResponse": {
+        "type": "object",
+        "properties": {
+          "bySeverity": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "byCwe": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountItem"
+            },
+            "nullable": true
+          },
+          "byCve": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountItem"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SuppressionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fingerprint": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "TrendPointDto": {
         "type": "object",
         "properties": {
@@ -906,6 +1190,21 @@
             "nullable": true
           },
           "isNew": {
+            "type": "boolean"
+          },
+          "securitySeverity": {
+            "type": "string",
+            "nullable": true
+          },
+          "cve": {
+            "type": "string",
+            "nullable": true
+          },
+          "cwe": {
+            "type": "string",
+            "nullable": true
+          },
+          "isSuppressed": {
             "type": "boolean"
           }
         },

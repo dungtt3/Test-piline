@@ -1,6 +1,6 @@
-# EAAP — Engineering Analysis Automation Platform (Phase 1 + 2)
+# EAAP — Engineering Analysis Automation Platform (Phase 1 + 2 + 3)
 
-Platform phân tích mã nguồn: clone repo → snapshot lên MinIO → (tùy chọn chạy test) → chạy analyzer (OCI adapter) qua Argo Workflows → ingest SARIF thành Warnings + Metric → dedup xuyên job bằng baseline → quality gate per-repo qua OPA → trend trên Grafana. Xây theo `EAAP-AI-Build-Spec-Phase1.md` và `EAAP-AI-Build-Spec-Phase2.md`.
+Platform phân tích mã nguồn: clone repo → snapshot lên MinIO → (tùy chọn chạy test) → chạy analyzer (OCI adapter) qua Argo Workflows → ingest SARIF thành Warnings + Metric (kèm phân loại security severity/CWE/CVE) → dedup xuyên job bằng baseline → suppression → quality gate per-repo (gồm security) qua OPA → trend trên Grafana. Xây theo `EAAP-AI-Build-Spec-Phase1.md`, `-Phase2.md`, `-Phase3.md`.
 
 ## Kiến trúc
 
@@ -96,10 +96,38 @@ test:
 
 Coverage và số test là **Metric** (`/results/metrics.json`), không phải Warning; adapter `test-report` biến test FAILED thành SARIF `test.failed`.
 
+## Phase 3 — Security & Dependency
+
+Phase 3 thêm 3 adapter security **native-SARIF** (`trivy` SCA+secret+misconfig, `semgrep` SAST, `gitleaks` secret), phân loại `SecuritySeverity`/CWE/CVE khi ingest, **suppression** theo fingerprint, và **gate security** (mặc định nghiêm: 0 critical/0 high). Xem `EAAP-AI-Build-Spec-Phase3.md`.
+
+Demo quét `vulnerable-app`, xem summary, suppress, re-scan (≤ 12 lệnh nối tiếp hạ tầng ở trên):
+
+```powershell
+# 1. Build 3 adapter security (offline: DB/rule đóng băng vào image — ADR-011/012)
+.\deploy\k3d\build-adapter.ps1 -Adapters trivy,semgrep,gitleaks -SkipImport
+
+# 2. Đăng ký repo (dùng tests/fixtures/vulnerable-app hoặc repo thật) và scan 4 analyzer
+$repo = Invoke-RestMethod -Method Post http://localhost:5080/api/v1/repositories -ContentType application/json -Body '{"provider":"GitHub","cloneUrl":"https://github.com/<org>/<repo>.git","defaultBranch":"main"}'
+$scan = Invoke-RestMethod -Method Post "http://localhost:5080/api/v1/repositories/$($repo.id)/scans" -ContentType application/json -Body '{"analyzers":["trivy"]}'
+
+# 3. Job GateFailed vì có finding high/critical; xem phân bố security
+Invoke-RestMethod "http://localhost:5080/api/v1/jobs/$($scan.jobId)/security-summary"
+Invoke-RestMethod "http://localhost:5080/api/v1/jobs/$($scan.jobId)/warnings?securitySeverity=High,Critical"
+
+# 4. Suppress một fingerprint (lấy từ warnings ở trên) rồi scan lại
+$fp = (Invoke-RestMethod "http://localhost:5080/api/v1/jobs/$($scan.jobId)/warnings?securitySeverity=Critical").items[0].fingerprint
+Invoke-RestMethod -Method Post "http://localhost:5080/api/v1/repositories/$($repo.id)/suppressions" -ContentType application/json -Body (@{fingerprint=$fp; reason="Accepted risk: reviewed by security team"} | ConvertTo-Json)
+
+# 5. Nới gate per-repo nếu cần (mặc định 0 critical/0 high)
+Invoke-RestMethod -Method Put "http://localhost:5080/api/v1/repositories/$($repo.id)/gate" -ContentType application/json -Body '{"thresholds":{"maxSecurityHigh":5}}'
+```
+
+Warning suppressed vẫn lưu, ẩn mặc định (`?includeSuppressed=true` để xem), **không** tính vào gate và trend (đếm riêng `WarningSuppressed`). Fixture cố tình lỗi ở `tests/fixtures/vulnerable-app/` (secret là **fake** — key ví dụ công khai của AWS).
+
 ## Test
 
 ```powershell
-dotnet test          # 67 unit + 21 integration (Testcontainers, cần Docker)
+dotnet test          # 80 unit + 28 integration (Testcontainers, cần Docker)
 ```
 
 ## Export OpenAPI
@@ -110,6 +138,6 @@ dotnet build src/Eaap.Api /p:ExportOpenApi=true   # ghi docs/api/openapi.json
 
 ## Tài liệu
 
-- Spec gốc: `EAAP-AI-Build-Spec-Phase1.md`, `EAAP-AI-Build-Spec-Phase2.md`
-- Quyết định kiến trúc (ADR): `docs/decisions/` (ADR-001…010)
+- Spec gốc: `EAAP-AI-Build-Spec-Phase1.md`, `-Phase2.md`, `-Phase3.md`
+- Quyết định kiến trúc (ADR): `docs/decisions/` (ADR-001…012)
 - Ngoài phạm vi hiện tại: `docs/backlog.md`

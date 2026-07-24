@@ -136,7 +136,18 @@
 - [x] `GateSummary` thêm `SecurityCounts` (critical/high/medium/low, non-suppressed); `GateThresholds` thêm `MaxSecurityCritical`/`MaxSecurityHigh`; OpaOptions mặc định 0 (nghiêm)
 - [x] rego thêm 2 rule: fail nếu critical > maxSecurityCritical, high > maxSecurityHigh; consumer tính security counts + resolve binding
 - [x] AC: direct gate (critical/high fail mặc định, medium/low không fail, nới ngưỡng cho phép) + integration (trivy critical → GateFailed "security.critical=1 > max 0" → suppress → Succeeded)
-## M8 — Demo + README Phase 3 ⏳
+## M8 — Demo + README Phase 3 ✅
+- [x] README mục Phase 3: demo quét vulnerable-app + security-summary + suppress + gate ≤12 lệnh; tiêu đề/intro/Tài liệu cập nhật
+- [x] `docs/api/openapi.json` export lại — có `security-summary`, `suppressions` (POST/GET/DELETE)
+- [x] Checklist Phần 9: regression Phase 1+2 xanh ✔; 3 adapter native-sarif, entrypoint 32/34/27 ≤50 ✔; vulnerable-app README cảnh báo + secret fake ✔; ADR offline trivy(011)/semgrep(012) ✔; openapi cập nhật ✔
+
+## Review (Phase 3)
+
+- **Kết quả:** 8/8 milestone; `dotnet build -warnaserror` 0 warning; **108 test pass** (80 unit + 28 integration), tăng từ 88 cuối Phase 2; regression Phase 1+2 nguyên vẹn.
+- **Kiến trúc thêm:** `SecurityEnricher` (CVSS→severity, CWE/CVE) + cột `SecuritySeverity`/`Cve`/`Cwe`/`IsSuppressed`; 3 adapter security native-sarif (trivy/semgrep/gitleaks) offline; API filter security + `security-summary`; suppression (fingerprint) loại khỏi gate+trend; gate security nghiêm mặc định.
+- **Sai lệch/quyết định (ADR):** Trivy DB đóng băng vào image, quét offline (ADR-011); Semgrep rule vendored offline + bộ tối thiểu CWE-89 (ADR-012). E2e live 3 adapter hoãn như ADR-006 (image lớn) — adapter verify tĩnh (sh -n, ≤50 dòng) + SARIF native đã test qua SecurityEnricher.
+- **KPI "thêm tool SARIF < 1 ngày":** 3 adapter đều là entrypoint shell mỏng (27–34 dòng) bọc image chính thức, không cần converter — minh chứng chi phí thêm tool có SARIF là rất thấp.
+- **Checklist Phần 9:** đủ ✔.
 
 ---
 
