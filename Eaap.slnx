@@ -1,5 +1,7 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Eaap.Adapters.Coverage/Eaap.Adapters.Coverage.csproj" />
+    <Project Path="src/Eaap.Adapters.TestReport/Eaap.Adapters.TestReport.csproj" />
     <Project Path="src/Eaap.Api/Eaap.Api.csproj" />
     <Project Path="src/Eaap.Application/Eaap.Application.csproj" />
     <Project Path="src/Eaap.Domain/Eaap.Domain.csproj" />

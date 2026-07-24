@@ -1,0 +1,9 @@
+{
+  "name": "vulnerable-app",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Intentionally vulnerable fixture for EAAP security adapter tests. Do not use.",
+  "dependencies": {
+    "lodash": "4.17.11"
+  }
+}

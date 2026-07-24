@@ -1,0 +1,13 @@
+id: gitleaks                  # unique, lowercase
+name: Gitleaks
+version: "1.0.0"
+image: eaap/adapter-gitleaks:latest
+mode: native-sarif            # native-sarif | converter | query
+category: security            # phase 3: lint|test|coverage|security|dependency|runtime
+timeoutSeconds: 600
+resources:
+  cpu: "0.5"
+  memory: 512Mi
+notes: >
+  Scans the current snapshot state only (--no-git), not commit history, because
+  the snapshot tarball has no .git directory by design.

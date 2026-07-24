@@ -6,7 +6,16 @@ public record JobRequested(Guid JobId, Guid SnapshotId, string[] Analyzers);
 
 public record JobStarted(Guid JobId, string ArgoWorkflowName);
 
-public record AnalyzerRunFinished(Guid AnalyzerRunId, Guid JobId, string Status, string? SarifArtifactPath);
+/// <summary>
+/// MetricsArtifactPath is optional: adapters emit /results/metrics.json only when they
+/// measure something (manifest field emitsMetrics), so phase 1 adapters keep working unchanged.
+/// </summary>
+public record AnalyzerRunFinished(
+    Guid AnalyzerRunId,
+    Guid JobId,
+    string Status,
+    string? SarifArtifactPath,
+    string? MetricsArtifactPath = null);
 
 public record JobFinished(Guid JobId, string Status);
 

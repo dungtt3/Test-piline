@@ -3,6 +3,7 @@ name: EchoAnalyzer
 version: "1.0.0"
 image: eaap/adapter-echo:latest
 mode: native-sarif
+category: lint            # phase 3: lint|test|coverage|security|dependency|runtime
 timeoutSeconds: 120
 resources:
   cpu: "0.5"

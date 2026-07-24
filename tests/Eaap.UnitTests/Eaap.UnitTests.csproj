@@ -23,6 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Eaap.Adapters.Coverage\Eaap.Adapters.Coverage.csproj" />
+    <ProjectReference Include="..\..\src\Eaap.Adapters.TestReport\Eaap.Adapters.TestReport.csproj" />
     <ProjectReference Include="..\..\src\Eaap.Sarif\Eaap.Sarif.csproj" />
     <ProjectReference Include="..\..\src\Eaap.Application\Eaap.Application.csproj" />
     <ProjectReference Include="..\..\src\Eaap.Infrastructure\Eaap.Infrastructure.csproj" />

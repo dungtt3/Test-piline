@@ -16,6 +16,7 @@ namespace Eaap.Infrastructure.Consumers;
 public class JobRequestedConsumer(
     EaapDbContext db,
     IArgoClient argoClient,
+    IRepoConfigReader repoConfigReader,
     IOptions<AdapterOptions> adapterOptions,
     ILogger<JobRequestedConsumer> logger) : IConsumer<JobRequested>
 {
@@ -42,13 +43,21 @@ public class JobRequestedConsumer(
             var primaryRun = job.AnalyzerRuns.First();
             var adapter = ResolveAdapter(primaryRun.AnalyzerId);
 
+            // The repository decides whether tests run, via .eaap/config.yaml in its snapshot.
+            var repoConfig = await repoConfigReader.ReadAsync(job.Snapshot!.StoragePath, context.CancellationToken);
+            if (repoConfig.RunsTests)
+            {
+                logger.LogInformation("Job {JobId} will run tests with image {Image}", job.Id, repoConfig.Test!.Image);
+            }
+
             var workflowName = await argoClient.SubmitAnalysisWorkflowAsync(new ArgoSubmitRequest(
                 job.Id,
                 primaryRun.Id,
                 primaryRun.AnalyzerId,
                 adapter.Image,
-                job.Snapshot!.StoragePath,
-                job.Snapshot.CommitSha), context.CancellationToken);
+                job.Snapshot.StoragePath,
+                job.Snapshot.CommitSha,
+                repoConfig.Test), context.CancellationToken);
 
             job.ArgoWorkflowName = workflowName;
             job.Status = JobStatus.Running;

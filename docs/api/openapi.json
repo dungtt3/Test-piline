@@ -45,7 +45,7 @@
         "tags": [
           "Jobs"
         ],
-        "summary": "List warnings of a job (paged, filterable by level and ruleId)",
+        "summary": "List warnings of a job (filter by level, ruleId, isNew, securitySeverity, cwe)",
         "parameters": [
           {
             "name": "id",
@@ -68,6 +68,35 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "isNew",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "securitySeverity",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cwe",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeSuppressed",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           },
           {
@@ -96,6 +125,40 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WarningDtoPagedResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{id}/security-summary": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Security summary of a job: counts by severity, CWE and CVE",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecuritySummaryResponse"
                 }
               }
             }
@@ -281,6 +344,330 @@
           }
         }
       }
+    },
+    "/api/v1/repositories/{id}/baseline": {
+      "get": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "List a repository's warning baseline (paged, filterable by status)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaselineDtoPagedResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{id}/gate": {
+      "get": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "Get the per-repository quality gate binding (empty when none is set)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateBindingResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "Create or replace the per-repository quality gate binding",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GateBindingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateBindingResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{id}/trend": {
+      "get": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "Get the repository's trend points over time (for dashboards)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrendPointDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{id}/suppressions": {
+      "post": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "Suppress a finding by fingerprint for this repository",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSuppressionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuppressionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "List a repository's suppressions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeExpired",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuppressionDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{id}/suppressions/{suppressionId}": {
+      "delete": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "Remove a suppression",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "suppressionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -321,6 +708,76 @@
         },
         "additionalProperties": false
       },
+      "BaselineDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fingerprint": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstSeenJobId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "firstSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BaselineDtoPagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BaselineDto"
+            },
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountItem": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateRepositoryRequest": {
         "type": "object",
         "properties": {
@@ -333,6 +790,70 @@
           },
           "defaultBranch": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateSuppressionRequest": {
+        "type": "object",
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GateBindingRequest": {
+        "type": "object",
+        "properties": {
+          "policyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "thresholds": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "format": "double"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GateBindingResponse": {
+        "type": "object",
+        "properties": {
+          "repositoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "policyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "thresholds": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "format": "double"
+            },
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
@@ -519,6 +1040,114 @@
         },
         "additionalProperties": false
       },
+      "SecuritySummaryResponse": {
+        "type": "object",
+        "properties": {
+          "bySeverity": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "byCwe": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountItem"
+            },
+            "nullable": true
+          },
+          "byCve": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountItem"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SuppressionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fingerprint": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrendPointDto": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "commitSha": {
+            "type": "string",
+            "nullable": true
+          },
+          "warningTotal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "warningNew": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "warningResolved": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "errorCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "coverageLine": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "testsTotal": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "testsFailed": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "WarningDto": {
         "type": "object",
         "properties": {
@@ -559,6 +1188,24 @@
           "fingerprint": {
             "type": "string",
             "nullable": true
+          },
+          "isNew": {
+            "type": "boolean"
+          },
+          "securitySeverity": {
+            "type": "string",
+            "nullable": true
+          },
+          "cve": {
+            "type": "string",
+            "nullable": true
+          },
+          "cwe": {
+            "type": "string",
+            "nullable": true
+          },
+          "isSuppressed": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

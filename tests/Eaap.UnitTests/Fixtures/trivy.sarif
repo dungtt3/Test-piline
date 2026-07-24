@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Trivy",
+          "version": "0.53.0",
+          "rules": [
+            {
+              "id": "CVE-2021-44228",
+              "name": "OsPackageVulnerability",
+              "shortDescription": { "text": "log4j: Remote code execution via JNDI" },
+              "properties": {
+                "security-severity": "10.0",
+                "tags": ["vulnerability", "CWE-502"]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2021-44228",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": { "text": "Package: org.apache.logging.log4j:log4j-core\nVulnerability CVE-2021-44228\nSeverity: CRITICAL" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "pom.xml" },
+                "region": { "startLine": 42 }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

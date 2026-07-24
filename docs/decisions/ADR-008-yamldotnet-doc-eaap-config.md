@@ -1,0 +1,5 @@
+# ADR-008: Thêm YamlDotNet để đọc `.eaap/config.yaml`
+
+- **Bối cảnh:** Spec Phase 2 Phần 7 quy định cấu hình bước test nằm trong file quy ước `.eaap/config.yaml` của chính repo được quét. Danh sách stack chốt ở Phase 1 không có thư viện YAML nào, mà CLAUDE.md cấm thêm NuGet ngoài stack nếu chưa có ADR. Tự viết parser YAML là lựa chọn tệ (YAML có folded scalar `>`, block scalar `|`, anchor... — dễ sai âm thầm).
+- **Quyết định:** Thêm `YamlDotNet` 16.2.1 vào `Eaap.Infrastructure` — thư viện YAML tiêu chuẩn de-facto của .NET, MIT license, không kéo theo phụ thuộc lạ. Cấu hình `CamelCaseNamingConvention` + `IgnoreUnmatchedProperties` để file config thêm key mới ở phase sau (vd `runtime:` của Phase 4, `analyzers:` của Phase 4 Phần 7) không làm vỡ parser cũ.
+- **Hệ quả:** `RepoConfigReader` đọc thẳng `.eaap/config.yaml` từ tarball snapshot trên MinIO, không cần clone lại repo. **Nguyên tắc chịu lỗi:** file thiếu, hỏng YAML, hoặc khai báo nửa vời (bật `enabled: true` nhưng không có `command`) đều degrade về "không chạy test" chứ không chặn job phân tích — cấu hình sai của người dùng không được phép làm hỏng pipeline.

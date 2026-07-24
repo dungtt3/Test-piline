@@ -1,6 +1,6 @@
-# EAAP — Engineering Analysis Automation Platform (Phase 1)
+# EAAP — Engineering Analysis Automation Platform (Phase 1 + 2 + 3)
 
-Platform phân tích mã nguồn: clone repo → snapshot lên MinIO → chạy analyzer (OCI adapter) qua Argo Workflows → ingest SARIF thành Warnings → quality gate qua OPA. Xây theo `EAAP-AI-Build-Spec-Phase1.md`.
+Platform phân tích mã nguồn: clone repo → snapshot lên MinIO → (tùy chọn chạy test) → chạy analyzer (OCI adapter) qua Argo Workflows → ingest SARIF thành Warnings + Metric (kèm phân loại security severity/CWE/CVE) → dedup xuyên job bằng baseline → suppression → quality gate per-repo (gồm security) qua OPA → trend trên Grafana. Xây theo `EAAP-AI-Build-Spec-Phase1.md`, `-Phase2.md`, `-Phase3.md`.
 
 ## Kiến trúc
 
@@ -51,12 +51,83 @@ Job chuyển `Pending → Running → Succeeded` (hoặc `GateFailed` nếu vi p
 
 ## Quality gate
 
-Policy Rego tại `policies/quality-gate/default.rego` (OPA load tự động qua docker compose). Ngưỡng cấu hình `Opa:MaxWarnings` (mặc định 100). Đặt `$env:Opa__MaxWarnings = "0"` trước khi chạy API để mọi warning làm job `GateFailed`.
+Policy Rego tại `policies/quality-gate/default.rego` (OPA load tự động qua docker compose). Ngưỡng nền cấu hình trong `Opa:*` (`MaxWarnings=100`, `MaxNewWarnings=-1` tắt, `MinCoverageLine=0` tắt, `MaxTestsFailed=0`). Từ Phase 2, gate còn xét coverage, số test fail và **warning mới** (so baseline), và cấu hình được **theo từng repo** qua `PUT /api/v1/repositories/{id}/gate`.
+
+## Phase 2 — Test, Coverage, Baseline, Gate per-repo, Trend
+
+Phase 2 thêm khái niệm **Metric** (tách khỏi Warning), 2 adapter converter (`test-report`, `coverage`), dedup **xuyên job** bằng baseline (`IsNew`/`Resolved`), gate per-repository và trend trên Grafana. Xem `EAAP-AI-Build-Spec-Phase2.md`.
+
+Demo test + coverage + gate + trend (tiếp nối 8 lệnh hạ tầng ở trên; ≤ 12 lệnh):
+
+```powershell
+# 1. Hạ tầng + Grafana (đã gồm postgres/rabbitmq/minio/opa; grafana ở :3000)
+docker compose up -d --wait
+
+# 2. Build 2 adapter converter Phase 2 (context = repo root, không cần k3d)
+.\deploy\k3d\build-adapter.ps1 -Adapters test-report,coverage -SkipImport
+
+# 3. Đăng ký repo và siết gate: coverage tối thiểu 80%, không cho warning mới
+$repo = Invoke-RestMethod -Method Post http://localhost:5080/api/v1/repositories -ContentType application/json -Body '{"provider":"GitHub","cloneUrl":"https://github.com/<org>/<repo>.git","defaultBranch":"main"}'
+Invoke-RestMethod -Method Put "http://localhost:5080/api/v1/repositories/$($repo.id)/gate" -ContentType application/json -Body '{"thresholds":{"minCoverageLine":80,"maxNewWarnings":0}}'
+
+# 4. Repo cần có .eaap/config.yaml khai báo bước test (xem mẫu bên dưới) rồi scan
+$scan = Invoke-RestMethod -Method Post "http://localhost:5080/api/v1/repositories/$($repo.id)/scans" -ContentType application/json -Body '{"analyzers":["megalinter"]}'
+
+# 5. Xem warning mới, baseline, và trend
+Invoke-RestMethod "http://localhost:5080/api/v1/jobs/$($scan.jobId)/warnings?isNew=true"
+Invoke-RestMethod "http://localhost:5080/api/v1/repositories/$($repo.id)/baseline?status=Active"
+Invoke-RestMethod "http://localhost:5080/api/v1/repositories/$($repo.id)/trend"
+
+# 6. Mở Grafana http://localhost:3000 (anonymous Viewer) → dashboard "EAAP — Repository Trend",
+#    chọn RepositoryId để xem Warning total / New vs Resolved / Coverage % / Tests failed.
+```
+
+Mẫu `.eaap/config.yaml` đặt trong repo được quét (bước `run-tests` tùy chọn, sinh report vào `.eaap/test-results` + `.eaap/coverage`):
+
+```yaml
+test:
+  enabled: true
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  command: >
+    dotnet test --logger trx --results-directory /workspace/.eaap/test-results
+    /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
+    /p:CoverletOutput=/workspace/.eaap/coverage/
+```
+
+Coverage và số test là **Metric** (`/results/metrics.json`), không phải Warning; adapter `test-report` biến test FAILED thành SARIF `test.failed`.
+
+## Phase 3 — Security & Dependency
+
+Phase 3 thêm 3 adapter security **native-SARIF** (`trivy` SCA+secret+misconfig, `semgrep` SAST, `gitleaks` secret), phân loại `SecuritySeverity`/CWE/CVE khi ingest, **suppression** theo fingerprint, và **gate security** (mặc định nghiêm: 0 critical/0 high). Xem `EAAP-AI-Build-Spec-Phase3.md`.
+
+Demo quét `vulnerable-app`, xem summary, suppress, re-scan (≤ 12 lệnh nối tiếp hạ tầng ở trên):
+
+```powershell
+# 1. Build 3 adapter security (offline: DB/rule đóng băng vào image — ADR-011/012)
+.\deploy\k3d\build-adapter.ps1 -Adapters trivy,semgrep,gitleaks -SkipImport
+
+# 2. Đăng ký repo (dùng tests/fixtures/vulnerable-app hoặc repo thật) và scan 4 analyzer
+$repo = Invoke-RestMethod -Method Post http://localhost:5080/api/v1/repositories -ContentType application/json -Body '{"provider":"GitHub","cloneUrl":"https://github.com/<org>/<repo>.git","defaultBranch":"main"}'
+$scan = Invoke-RestMethod -Method Post "http://localhost:5080/api/v1/repositories/$($repo.id)/scans" -ContentType application/json -Body '{"analyzers":["trivy"]}'
+
+# 3. Job GateFailed vì có finding high/critical; xem phân bố security
+Invoke-RestMethod "http://localhost:5080/api/v1/jobs/$($scan.jobId)/security-summary"
+Invoke-RestMethod "http://localhost:5080/api/v1/jobs/$($scan.jobId)/warnings?securitySeverity=High,Critical"
+
+# 4. Suppress một fingerprint (lấy từ warnings ở trên) rồi scan lại
+$fp = (Invoke-RestMethod "http://localhost:5080/api/v1/jobs/$($scan.jobId)/warnings?securitySeverity=Critical").items[0].fingerprint
+Invoke-RestMethod -Method Post "http://localhost:5080/api/v1/repositories/$($repo.id)/suppressions" -ContentType application/json -Body (@{fingerprint=$fp; reason="Accepted risk: reviewed by security team"} | ConvertTo-Json)
+
+# 5. Nới gate per-repo nếu cần (mặc định 0 critical/0 high)
+Invoke-RestMethod -Method Put "http://localhost:5080/api/v1/repositories/$($repo.id)/gate" -ContentType application/json -Body '{"thresholds":{"maxSecurityHigh":5}}'
+```
+
+Warning suppressed vẫn lưu, ẩn mặc định (`?includeSuppressed=true` để xem), **không** tính vào gate và trend (đếm riêng `WarningSuppressed`). Fixture cố tình lỗi ở `tests/fixtures/vulnerable-app/` (secret là **fake** — key ví dụ công khai của AWS).
 
 ## Test
 
 ```powershell
-dotnet test          # 18 unit + 5 integration (Testcontainers, cần Docker)
+dotnet test          # 80 unit + 28 integration (Testcontainers, cần Docker)
 ```
 
 ## Export OpenAPI
@@ -67,6 +138,6 @@ dotnet build src/Eaap.Api /p:ExportOpenApi=true   # ghi docs/api/openapi.json
 
 ## Tài liệu
 
-- Spec gốc: `EAAP-AI-Build-Spec-Phase1.md`
-- Quyết định kiến trúc (ADR): `docs/decisions/`
-- Ngoài phạm vi Phase 1: `docs/backlog.md`
+- Spec gốc: `EAAP-AI-Build-Spec-Phase1.md`, `-Phase2.md`, `-Phase3.md`
+- Quyết định kiến trúc (ADR): `docs/decisions/` (ADR-001…012)
+- Ngoài phạm vi hiện tại: `docs/backlog.md`

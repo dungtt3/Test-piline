@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Semgrep",
+          "version": "1.80.0",
+          "rules": [
+            {
+              "id": "python.lang.security.audit.dangerous-subprocess-use",
+              "name": "dangerous-subprocess-use",
+              "shortDescription": { "text": "Detected subprocess function with user input" },
+              "properties": {
+                "tags": ["security", "CWE-78: Improper Neutralization of Special Elements used in an OS Command", "OWASP-A03:2021"]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "python.lang.security.audit.dangerous-subprocess-use",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": { "text": "Detected subprocess function 'call' with user-controlled input." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/handlers.py" },
+                "region": { "startLine": 17 }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

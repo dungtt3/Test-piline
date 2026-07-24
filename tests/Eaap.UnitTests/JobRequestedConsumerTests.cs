@@ -15,13 +15,21 @@ namespace Eaap.UnitTests;
 
 public class JobRequestedConsumerTests
 {
-    private static async Task<(ServiceProvider Provider, Guid JobId)> BuildAsync(IArgoClient argoClient)
+    private static async Task<(ServiceProvider Provider, Guid JobId)> BuildAsync(
+        IArgoClient argoClient,
+        EaapRepoConfig? repoConfig = null)
     {
         var databaseName = "jobs-" + Guid.NewGuid();
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDbContext<EaapDbContext>(o => o.UseInMemoryDatabase(databaseName));
         services.AddSingleton(argoClient);
+
+        var configReader = Substitute.For<IRepoConfigReader>();
+        configReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(repoConfig ?? EaapRepoConfig.None);
+        services.AddSingleton(configReader);
+
         services.Configure<AdapterOptions>(o =>
             o.Registry["megalinter"] = new AdapterEntry { Image = "eaap/adapter-megalinter:latest" });
         services.AddMassTransitTestHarness(bus => bus.AddConsumer<JobRequestedConsumer>());
@@ -93,6 +101,62 @@ public class JobRequestedConsumerTests
             Assert.Equal("eaap-megalinter-abc12", job.ArgoWorkflowName);
             Assert.NotNull(job.StartedAt);
             Assert.Equal(AnalyzerRunStatus.Running, job.AnalyzerRuns.Single().Status);
+        }
+        finally
+        {
+            await harness.Stop();
+        }
+    }
+
+    [Fact]
+    public async Task JobRequested_RepoDeclaresTests_PassesTestConfigToArgo()
+    {
+        var argoClient = Substitute.For<IArgoClient>();
+        argoClient.SubmitAnalysisWorkflowAsync(Arg.Any<ArgoSubmitRequest>(), Arg.Any<CancellationToken>())
+            .Returns("eaap-megalinter-withtests");
+        var repoConfig = new EaapRepoConfig(
+            new RepoTestConfig(Enabled: true, "mcr.microsoft.com/dotnet/sdk:8.0", "dotnet test --logger trx"));
+
+        var (provider, jobId) = await BuildAsync(argoClient, repoConfig);
+        await using var _ = provider;
+        var harness = provider.GetRequiredService<ITestHarness>();
+        await harness.Start();
+        try
+        {
+            await harness.Bus.Publish(new JobRequested(jobId, Guid.NewGuid(), ["megalinter"]));
+            Assert.True(await harness.Consumed.Any<JobRequested>());
+            Assert.True(await harness.Published.Any<JobStarted>());
+
+            await argoClient.Received(1).SubmitAnalysisWorkflowAsync(
+                Arg.Is<ArgoSubmitRequest>(r => r.Test != null && r.Test.IsRunnable
+                    && r.Test.Image == "mcr.microsoft.com/dotnet/sdk:8.0"),
+                Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            await harness.Stop();
+        }
+    }
+
+    [Fact]
+    public async Task JobRequested_RepoWithoutConfig_SubmitsWithoutTestStep()
+    {
+        // Phase 1 repositories have no .eaap/config.yaml and must keep working untouched.
+        var argoClient = Substitute.For<IArgoClient>();
+        argoClient.SubmitAnalysisWorkflowAsync(Arg.Any<ArgoSubmitRequest>(), Arg.Any<CancellationToken>())
+            .Returns("eaap-megalinter-notests");
+
+        var (provider, jobId) = await BuildAsync(argoClient);
+        await using var _ = provider;
+        var harness = provider.GetRequiredService<ITestHarness>();
+        await harness.Start();
+        try
+        {
+            await harness.Bus.Publish(new JobRequested(jobId, Guid.NewGuid(), ["megalinter"]));
+            Assert.True(await harness.Consumed.Any<JobRequested>());
+
+            await argoClient.Received(1).SubmitAnalysisWorkflowAsync(
+                Arg.Is<ArgoSubmitRequest>(r => r.Test == null), Arg.Any<CancellationToken>());
         }
         finally
         {

@@ -69,6 +69,26 @@ services:
     volumes:
       - ./policies:/policies:ro
 
+  # Reads the trend tables through the read-only grafana_ro role the Phase2 migration created.
+  grafana:
+    image: grafana/grafana:11.2.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      # Password of the read-only DB role; a local-dev default, rotate in real deployments (ADR-010).
+      EAAP_GRAFANA_RO_PASSWORD: ${EAAP_GRAFANA_RO_PASSWORD:-grafana-ro-dev}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafanadata:/var/lib/grafana
+
 volumes:
   pgdata:
   miniodata:
+  grafanadata:

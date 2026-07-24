@@ -1,0 +1,15 @@
+id: semgrep                   # unique, lowercase
+name: Semgrep
+version: "1.0.0"
+image: eaap/adapter-semgrep:latest
+mode: native-sarif            # native-sarif | converter | query
+category: security            # phase 3: lint|test|coverage|security|dependency|runtime
+timeoutSeconds: 900
+resources:
+  cpu: "1"
+  memory: 2Gi
+env:
+  # Use vendored offline rules by default; set to 1 to allow --config auto (needs network).
+  SEMGREP_USE_REGISTRY: "0"
+notes: >
+  Offline by default using rules vendored into the image at build time (ADR-012).

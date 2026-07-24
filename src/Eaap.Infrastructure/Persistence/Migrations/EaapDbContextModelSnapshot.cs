@@ -135,6 +135,65 @@ namespace Eaap.Infrastructure.Persistence.Migrations
                     b.ToTable("GateEvaluations");
                 });
 
+            modelBuilder.Entity("Eaap.Domain.Entities.GatePolicyBinding", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PolicyName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("RepositoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Thresholds")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RepositoryId")
+                        .IsUnique();
+
+                    b.ToTable("GatePolicyBindings");
+                });
+
+            modelBuilder.Entity("Eaap.Domain.Entities.MetricSet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AnalyzerRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Metrics")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnalyzerRunId");
+
+                    b.HasIndex("JobId");
+
+                    b.ToTable("MetricSets");
+                });
+
             modelBuilder.Entity("Eaap.Domain.Entities.Repository", b =>
                 {
                     b.Property<Guid>("Id")
@@ -202,6 +261,100 @@ namespace Eaap.Infrastructure.Persistence.Migrations
                     b.ToTable("Snapshots");
                 });
 
+            modelBuilder.Entity("Eaap.Domain.Entities.Suppression", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<Guid>("RepositoryId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Fingerprint");
+
+                    b.HasIndex("RepositoryId", "Fingerprint")
+                        .IsUnique();
+
+                    b.ToTable("Suppressions");
+                });
+
+            modelBuilder.Entity("Eaap.Domain.Entities.TrendPoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CommitSha")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<double?>("CoverageLine")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ErrorCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RepositoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("TestsFailed")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TestsTotal")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WarningNew")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WarningResolved")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WarningSuppressed")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WarningTotal")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId")
+                        .IsUnique();
+
+                    b.HasIndex("RepositoryId", "CreatedAt");
+
+                    b.ToTable("TrendPoints");
+                });
+
             modelBuilder.Entity("Eaap.Domain.Entities.Warning", b =>
                 {
                     b.Property<Guid>("Id")
@@ -214,6 +367,14 @@ namespace Eaap.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Cve")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Cwe")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<int?>("EndLine")
                         .HasColumnType("integer");
 
@@ -224,6 +385,12 @@ namespace Eaap.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("IsNew")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSuppressed")
+                        .HasColumnType("boolean");
 
                     b.Property<Guid>("JobId")
                         .HasColumnType("uuid");
@@ -246,6 +413,11 @@ namespace Eaap.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
+                    b.Property<string>("SecuritySeverity")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<int?>("StartLine")
                         .HasColumnType("integer");
 
@@ -257,7 +429,47 @@ namespace Eaap.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("JobId");
 
+                    b.HasIndex("SecuritySeverity");
+
                     b.ToTable("Warnings");
+                });
+
+            modelBuilder.Entity("Eaap.Domain.Entities.WarningBaseline", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FirstSeenJobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RepositoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Fingerprint");
+
+                    b.HasIndex("RepositoryId", "Fingerprint")
+                        .IsUnique();
+
+                    b.ToTable("WarningBaselines");
                 });
 
             modelBuilder.Entity("Eaap.Domain.Entities.AnalysisJob", b =>
@@ -293,6 +505,36 @@ namespace Eaap.Infrastructure.Persistence.Migrations
                     b.Navigation("Job");
                 });
 
+            modelBuilder.Entity("Eaap.Domain.Entities.GatePolicyBinding", b =>
+                {
+                    b.HasOne("Eaap.Domain.Entities.Repository", "Repository")
+                        .WithMany()
+                        .HasForeignKey("RepositoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Repository");
+                });
+
+            modelBuilder.Entity("Eaap.Domain.Entities.MetricSet", b =>
+                {
+                    b.HasOne("Eaap.Domain.Entities.AnalyzerRun", "AnalyzerRun")
+                        .WithMany()
+                        .HasForeignKey("AnalyzerRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Eaap.Domain.Entities.AnalysisJob", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AnalyzerRun");
+
+                    b.Navigation("Job");
+                });
+
             modelBuilder.Entity("Eaap.Domain.Entities.Snapshot", b =>
                 {
                     b.HasOne("Eaap.Domain.Entities.Repository", "Repository")
@@ -300,6 +542,36 @@ namespace Eaap.Infrastructure.Persistence.Migrations
                         .HasForeignKey("RepositoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Repository");
+                });
+
+            modelBuilder.Entity("Eaap.Domain.Entities.Suppression", b =>
+                {
+                    b.HasOne("Eaap.Domain.Entities.Repository", "Repository")
+                        .WithMany()
+                        .HasForeignKey("RepositoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Repository");
+                });
+
+            modelBuilder.Entity("Eaap.Domain.Entities.TrendPoint", b =>
+                {
+                    b.HasOne("Eaap.Domain.Entities.AnalysisJob", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Eaap.Domain.Entities.Repository", "Repository")
+                        .WithMany()
+                        .HasForeignKey("RepositoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Job");
 
                     b.Navigation("Repository");
                 });
@@ -321,6 +593,17 @@ namespace Eaap.Infrastructure.Persistence.Migrations
                     b.Navigation("AnalyzerRun");
 
                     b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("Eaap.Domain.Entities.WarningBaseline", b =>
+                {
+                    b.HasOne("Eaap.Domain.Entities.Repository", "Repository")
+                        .WithMany()
+                        .HasForeignKey("RepositoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Repository");
                 });
 
             modelBuilder.Entity("Eaap.Domain.Entities.AnalysisJob", b =>

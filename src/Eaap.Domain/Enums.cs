@@ -33,3 +33,18 @@ public enum WarningLevel
     Warning,
     Error
 }
+
+public enum BaselineStatus
+{
+    Active,
+    Resolved
+}
+
+public enum SecuritySeverity
+{
+    None,
+    Low,
+    Medium,
+    High,
+    Critical
+}

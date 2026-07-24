@@ -1,0 +1,14 @@
+id: coverage                  # unique, lowercase
+name: CoverageConverter
+version: "1.0.0"
+image: eaap/adapter-coverage:latest
+mode: converter               # native-sarif | converter | query
+category: coverage            # phase 3: lint|test|coverage|security|dependency|runtime
+emitsMetrics: true            # writes /results/metrics.json with the coverage.* keys
+timeoutSeconds: 300
+resources:
+  cpu: "0.5"
+  memory: 512Mi
+env:
+  # Files below this line-coverage percentage become coverage.file.low warnings.
+  COVERAGE_FILE_THRESHOLD: "50"

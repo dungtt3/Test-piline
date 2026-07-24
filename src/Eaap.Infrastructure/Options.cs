@@ -35,6 +35,19 @@ public class OpaOptions
     public string BaseUrl { get; set; } = "http://localhost:8181";
     public string PolicyName { get; set; } = "quality-gate/default";
     public int MaxWarnings { get; set; } = 100;
+
+    // New phase 2 thresholds. Defaults keep the gate lenient so upgrading a phase 1
+    // deployment does not suddenly start failing: a repo relaxes or tightens these per-repo
+    // via GatePolicyBinding. MaxTestsFailed=0 is the one strict default, and it only bites
+    // when the repo actually ran tests (the tests.failed metric exists).
+    public int MaxNewWarnings { get; set; } = -1;      // negative = unlimited
+    public double MinCoverageLine { get; set; } = 0;   // 0 = no coverage floor
+    public int MaxTestsFailed { get; set; } = 0;
+
+    // Strict by default (build spec phase 3 section 6): any critical or high security finding
+    // fails the gate. Enterprises relax these per-repo via GatePolicyBinding.
+    public int MaxSecurityCritical { get; set; } = 0;
+    public int MaxSecurityHigh { get; set; } = 0;
 }
 
 public class ArgoOptions
@@ -57,4 +70,9 @@ public class AdapterEntry
 {
     public string Image { get; set; } = string.Empty;
     public int TimeoutSeconds { get; set; } = 1800;
+
+    /// <summary>Mirrors manifest.yaml category: lint|test|coverage|security|dependency|runtime.</summary>
+    public string Category { get; set; } = string.Empty;
+
+    public bool IsSecurity => string.Equals(Category, "security", StringComparison.OrdinalIgnoreCase);
 }

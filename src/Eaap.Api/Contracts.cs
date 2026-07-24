@@ -42,4 +42,54 @@ public record WarningDto(
     string? FilePath,
     int? StartLine,
     int? EndLine,
-    string Fingerprint);
+    string Fingerprint,
+    bool IsNew,
+    string SecuritySeverity,
+    string? Cve,
+    string? Cwe,
+    bool IsSuppressed);
+
+public record SecuritySummaryResponse(
+    IReadOnlyDictionary<string, int> BySeverity,
+    IReadOnlyList<CountItem> ByCwe,
+    IReadOnlyList<CountItem> ByCve);
+
+public record CountItem(string Key, int Count);
+
+public record CreateSuppressionRequest(string Fingerprint, string Reason, DateTimeOffset? ExpiresAt);
+
+public record SuppressionDto(
+    Guid Id,
+    string Fingerprint,
+    string Reason,
+    string CreatedBy,
+    DateTimeOffset? ExpiresAt,
+    DateTimeOffset CreatedAt);
+
+public record BaselineDto(
+    Guid Id,
+    string Fingerprint,
+    Guid FirstSeenJobId,
+    DateTimeOffset FirstSeenAt,
+    string Status,
+    DateTimeOffset? ResolvedAt);
+
+public record GateBindingRequest(string? PolicyName, Dictionary<string, double> Thresholds);
+
+public record GateBindingResponse(
+    Guid RepositoryId,
+    string? PolicyName,
+    IReadOnlyDictionary<string, double> Thresholds,
+    DateTimeOffset? UpdatedAt);
+
+public record TrendPointDto(
+    Guid JobId,
+    string CommitSha,
+    int WarningTotal,
+    int WarningNew,
+    int WarningResolved,
+    int ErrorCount,
+    double? CoverageLine,
+    int? TestsTotal,
+    int? TestsFailed,
+    DateTimeOffset CreatedAt);

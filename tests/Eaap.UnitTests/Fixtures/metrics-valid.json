@@ -1,0 +1,11 @@
+{
+  "metrics": {
+    "tests.total": 240,
+    "tests.passed": 233,
+    "tests.failed": 2,
+    "tests.skipped": 5,
+    "tests.durationSeconds": 41.7,
+    "coverage.line": 82.5,
+    "coverage.branch": 71.25
+  }
+}

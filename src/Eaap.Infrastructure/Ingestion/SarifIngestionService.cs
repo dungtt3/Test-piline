@@ -5,12 +5,13 @@ using Eaap.Infrastructure.Persistence;
 using Eaap.Sarif;
 using Microsoft.CodeAnalysis.Sarif;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace Eaap.Infrastructure.Ingestion;
 
 /// <summary>Maps SARIF results to Warning rows, deduplicating by fingerprint within a job.</summary>
-public class SarifIngestionService(EaapDbContext db)
+public class SarifIngestionService(EaapDbContext db, IOptions<AdapterOptions> adapterOptions)
 {
     private static readonly JsonSerializerSettings RawSerializerSettings = new()
     {
@@ -21,6 +22,22 @@ public class SarifIngestionService(EaapDbContext db)
     public async Task<int> IngestAsync(AnalyzerRun run, Stream sarifStream, CancellationToken ct = default)
     {
         var log = SarifDocument.Load(sarifStream);
+
+        // Whether this analyzer is a security scanner decides how findings without an explicit
+        // CVSS score are classified (build spec phase 3 section 4).
+        var isSecurity = adapterOptions.Value.Registry.TryGetValue(run.AnalyzerId, out var adapter)
+            && adapter.IsSecurity;
+
+        // Fingerprints muted by an in-effect suppression for this repository (phase 3 section 5).
+        var repositoryId = await db.AnalysisJobs
+            .Where(j => j.Id == run.JobId)
+            .Select(j => j.Snapshot!.RepositoryId)
+            .FirstAsync(ct);
+        var now = DateTimeOffset.UtcNow;
+        var suppressedFingerprints = (await db.Suppressions
+            .Where(s => s.RepositoryId == repositoryId && (s.ExpiresAt == null || s.ExpiresAt > now))
+            .Select(s => s.Fingerprint)
+            .ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
 
         // Warnings already stored for this job (e.g. from other analyzer runs) participate in dedup.
         var keptByFingerprint = await db.Warnings
@@ -46,6 +63,8 @@ public class SarifIngestionService(EaapDbContext db)
                     continue;
                 }
 
+                var security = SecurityEnricher.Enrich(result, sarifRun, isSecurity);
+
                 var warning = new Warning
                 {
                     Id = Guid.NewGuid(),
@@ -58,6 +77,10 @@ public class SarifIngestionService(EaapDbContext db)
                     StartLine = startLine,
                     EndLine = endLine,
                     Fingerprint = fingerprint,
+                    SecuritySeverity = security.Severity,
+                    Cve = security.Cve,
+                    Cwe = security.Cwe,
+                    IsSuppressed = suppressedFingerprints.Contains(fingerprint),
                     SarifRaw = JsonConvert.SerializeObject(result, RawSerializerSettings),
                     CreatedAt = DateTimeOffset.UtcNow
                 };

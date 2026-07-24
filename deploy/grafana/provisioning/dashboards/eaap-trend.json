@@ -1,0 +1,98 @@
+{
+  "uid": "eaap-trend",
+  "title": "EAAP — Repository Trend",
+  "tags": ["eaap"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "",
+  "time": { "from": "now-90d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "repository",
+        "label": "Repository",
+        "type": "query",
+        "datasource": { "type": "postgres", "uid": "eaap-postgres" },
+        "query": "SELECT DISTINCT \"RepositoryId\"::text FROM \"TrendPoints\" ORDER BY 1",
+        "refresh": 2,
+        "includeAll": false,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Warnings total",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "eaap-postgres" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "pointSize": 6, "showPoints": "always" } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "eaap-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT \"CreatedAt\" AS \"time\", \"WarningTotal\" AS \"Warnings total\", \"ErrorCount\" AS \"Errors\" FROM \"TrendPoints\" WHERE \"RepositoryId\" = '$repository'::uuid AND $__timeFilter(\"CreatedAt\") ORDER BY \"CreatedAt\""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "New vs Resolved",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "eaap-postgres" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "eaap-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT \"CreatedAt\" AS \"time\", \"WarningNew\" AS \"New\", \"WarningResolved\" AS \"Resolved\" FROM \"TrendPoints\" WHERE \"RepositoryId\" = '$repository'::uuid AND $__timeFilter(\"CreatedAt\") ORDER BY \"CreatedAt\""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Coverage line %",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "eaap-postgres" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "showPoints": "always" } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "eaap-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT \"CreatedAt\" AS \"time\", \"CoverageLine\" AS \"Coverage line %\" FROM \"TrendPoints\" WHERE \"RepositoryId\" = '$repository'::uuid AND \"CoverageLine\" IS NOT NULL AND $__timeFilter(\"CreatedAt\") ORDER BY \"CreatedAt\""
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Tests failed",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "eaap-postgres" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "eaap-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT \"CreatedAt\" AS \"time\", \"TestsFailed\" AS \"Tests failed\" FROM \"TrendPoints\" WHERE \"RepositoryId\" = '$repository'::uuid AND \"TestsFailed\" IS NOT NULL AND $__timeFilter(\"CreatedAt\") ORDER BY \"CreatedAt\""
+        }
+      ]
+    }
+  ]
+}
