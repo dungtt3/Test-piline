@@ -139,6 +139,60 @@ public static class RepositoryEndpoints
         .Produces<PagedResult<BaselineDto>>()
         .Produces(StatusCodes.Status404NotFound);
 
+        repositories.MapGet("/{id:guid}/gate", async (Guid id, EaapDbContext db, CancellationToken ct) =>
+        {
+            if (!await db.Repositories.AnyAsync(r => r.Id == id, ct))
+            {
+                return Results.NotFound();
+            }
+
+            var binding = await db.GatePolicyBindings.AsNoTracking().FirstOrDefaultAsync(b => b.RepositoryId == id, ct);
+            return binding is null
+                ? Results.Ok(new GateBindingResponse(id, null, new Dictionary<string, double>(), null))
+                : Results.Ok(new GateBindingResponse(id, binding.PolicyName, binding.Thresholds, binding.UpdatedAt));
+        })
+        .WithSummary("Get the per-repository quality gate binding (empty when none is set)")
+        .Produces<GateBindingResponse>()
+        .Produces(StatusCodes.Status404NotFound);
+
+        repositories.MapPut("/{id:guid}/gate", async (
+            Guid id, GateBindingRequest request, EaapDbContext db, CancellationToken ct) =>
+        {
+            if (!await db.Repositories.AnyAsync(r => r.Id == id, ct))
+            {
+                return Results.NotFound();
+            }
+
+            var thresholds = request.Thresholds ?? [];
+            var now = DateTimeOffset.UtcNow;
+            var binding = await db.GatePolicyBindings.FirstOrDefaultAsync(b => b.RepositoryId == id, ct);
+            if (binding is null)
+            {
+                binding = new GatePolicyBinding
+                {
+                    Id = Guid.NewGuid(),
+                    RepositoryId = id,
+                    PolicyName = request.PolicyName,
+                    Thresholds = thresholds,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                db.GatePolicyBindings.Add(binding);
+            }
+            else
+            {
+                binding.PolicyName = request.PolicyName;
+                binding.Thresholds = thresholds;
+                binding.UpdatedAt = now;
+            }
+            await db.SaveChangesAsync(ct);
+
+            return Results.Ok(new GateBindingResponse(id, binding.PolicyName, binding.Thresholds, binding.UpdatedAt));
+        })
+        .WithSummary("Create or replace the per-repository quality gate binding")
+        .Produces<GateBindingResponse>()
+        .Produces(StatusCodes.Status404NotFound);
+
         return group;
     }
 }

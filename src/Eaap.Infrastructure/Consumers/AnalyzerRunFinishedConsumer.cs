@@ -10,6 +10,7 @@ using Eaap.Sarif;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Eaap.Infrastructure.Consumers;
 
@@ -24,6 +25,7 @@ public class AnalyzerRunFinishedConsumer(
     MetricsIngestionService metricsIngestionService,
     BaselineService baselineService,
     IQualityGate qualityGate,
+    IOptions<OpaOptions> opaOptions,
     ILogger<AnalyzerRunFinishedConsumer> logger) : IConsumer<AnalyzerRunFinished>
 {
     public async Task Consume(ConsumeContext<AnalyzerRunFinished> context)
@@ -143,18 +145,25 @@ public class AnalyzerRunFinishedConsumer(
 
     private async Task<GateResult> EvaluateGateAsync(AnalysisJob job, CancellationToken ct)
     {
+        // Suppressed warnings do not exist yet (phase 3); all warnings of the job count here.
         var counts = await db.Warnings
             .Where(w => w.JobId == job.Id)
             .GroupBy(w => new { w.RuleId, w.Level })
             .Select(g => new { g.Key.RuleId, g.Key.Level, Count = g.Count() })
             .ToListAsync(ct);
 
+        var newWarningCount = await db.Warnings.CountAsync(w => w.JobId == job.Id && w.IsNew, ct);
+
         var summary = new GateSummary(
             counts.Where(c => c.Level == WarningLevel.Error).Sum(c => c.Count),
             counts.Where(c => c.Level == WarningLevel.Warning).Sum(c => c.Count),
+            newWarningCount,
             counts.GroupBy(c => c.RuleId).ToDictionary(g => g.Key, g => g.Sum(c => c.Count)));
 
-        var gate = await qualityGate.EvaluateAsync(summary, ct);
+        var metrics = await GatherMetricsAsync(job.Id, ct);
+        var thresholds = await ResolveThresholdsAsync(job.SnapshotId, ct);
+
+        var gate = await qualityGate.EvaluateAsync(summary, metrics, thresholds, ct);
 
         db.GateEvaluations.Add(new GateEvaluation
         {
@@ -166,5 +175,52 @@ public class AnalyzerRunFinishedConsumer(
             EvaluatedAt = DateTimeOffset.UtcNow
         });
         return gate;
+    }
+
+    /// <summary>Merges every metric set of the job; a later run's value wins on a key clash.</summary>
+    private async Task<Dictionary<string, double>> GatherMetricsAsync(Guid jobId, CancellationToken ct)
+    {
+        var metrics = new Dictionary<string, double>();
+        var sets = await db.MetricSets.Where(m => m.JobId == jobId).ToListAsync(ct);
+        foreach (var set in sets)
+        {
+            foreach (var (key, value) in set.Metrics)
+            {
+                metrics[key] = value;
+            }
+        }
+        return metrics;
+    }
+
+    /// <summary>Per-repository binding overrides the platform defaults; absent keys keep the default.</summary>
+    private async Task<GateThresholds> ResolveThresholdsAsync(Guid snapshotId, CancellationToken ct)
+    {
+        var defaults = opaOptions.Value;
+        var thresholds = new GateThresholds(
+            defaults.MaxWarnings,
+            defaults.MaxNewWarnings,
+            defaults.MinCoverageLine,
+            defaults.MaxTestsFailed);
+
+        var repositoryId = await db.Snapshots
+            .Where(s => s.Id == snapshotId)
+            .Select(s => s.RepositoryId)
+            .FirstAsync(ct);
+
+        var binding = await db.GatePolicyBindings
+            .FirstOrDefaultAsync(b => b.RepositoryId == repositoryId, ct);
+        if (binding is null)
+        {
+            return thresholds;
+        }
+
+        var t = binding.Thresholds;
+        return thresholds with
+        {
+            MaxWarnings = t.TryGetValue("maxWarnings", out var mw) ? (int)mw : thresholds.MaxWarnings,
+            MaxNewWarnings = t.TryGetValue("maxNewWarnings", out var mnw) ? (int)mnw : thresholds.MaxNewWarnings,
+            MinCoverageLine = t.TryGetValue("minCoverageLine", out var mcl) ? mcl : thresholds.MinCoverageLine,
+            MaxTestsFailed = t.TryGetValue("maxTestsFailed", out var mtf) ? (int)mtf : thresholds.MaxTestsFailed
+        };
     }
 }

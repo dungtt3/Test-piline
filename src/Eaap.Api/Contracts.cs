@@ -52,3 +52,11 @@ public record BaselineDto(
     DateTimeOffset FirstSeenAt,
     string Status,
     DateTimeOffset? ResolvedAt);
+
+public record GateBindingRequest(string? PolicyName, Dictionary<string, double> Thresholds);
+
+public record GateBindingResponse(
+    Guid RepositoryId,
+    string? PolicyName,
+    IReadOnlyDictionary<string, double> Thresholds,
+    DateTimeOffset? UpdatedAt);

@@ -27,8 +27,12 @@ public class MetricsIngestionTests(EaapApiFactory factory)
         var client = factory.CreateClient();
         var job = await IngestionTests.WaitForJobFinishedAsync(client, jobId);
 
-        // Clean SARIF: nothing for the gate to complain about.
-        Assert.Equal("Succeeded", job.GetProperty("status").GetString());
+        // SARIF is clean, but the metrics report 2 failing tests, so the gate (maxTestsFailed=0)
+        // must fail the job — proof that metrics.json flows all the way into the gate decision.
+        Assert.Equal("GateFailed", job.GetProperty("status").GetString());
+        Assert.Contains(
+            job.GetProperty("gateEvaluation").GetProperty("violations").EnumerateArray().Select(v => v.GetString()),
+            v => v!.Contains("tests.failed=2"));
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EaapDbContext>();

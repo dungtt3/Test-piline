@@ -11,7 +11,11 @@ public class OpaQualityGate(HttpClient httpClient, IOptions<OpaOptions> options)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<GateResult> EvaluateAsync(GateSummary summary, CancellationToken ct = default)
+    public async Task<GateResult> EvaluateAsync(
+        GateSummary summary,
+        IReadOnlyDictionary<string, double> metrics,
+        GateThresholds thresholds,
+        CancellationToken ct = default)
     {
         var payload = new
         {
@@ -21,11 +25,16 @@ public class OpaQualityGate(HttpClient httpClient, IOptions<OpaOptions> options)
                 {
                     errorCount = summary.ErrorCount,
                     warningCount = summary.WarningCount,
+                    newWarningCount = summary.NewWarningCount,
                     byRule = summary.ByRule
                 },
+                metrics,
                 thresholds = new
                 {
-                    maxWarnings = options.Value.MaxWarnings
+                    maxWarnings = thresholds.MaxWarnings,
+                    maxNewWarnings = thresholds.MaxNewWarnings,
+                    minCoverageLine = thresholds.MinCoverageLine,
+                    maxTestsFailed = thresholds.MaxTestsFailed
                 }
             }
         };
@@ -39,12 +48,12 @@ public class OpaQualityGate(HttpClient httpClient, IOptions<OpaOptions> options)
         return new GateResult(
             body.Result?.Pass ?? false,
             options.Value.PolicyName,
-            body.Result?.Errors ?? []);
+            body.Result?.Violations ?? []);
     }
 
     private sealed record OpaResponse([property: JsonPropertyName("result")] OpaResult? Result);
 
     private sealed record OpaResult(
         [property: JsonPropertyName("pass")] bool Pass,
-        [property: JsonPropertyName("errors")] string[]? Errors);
+        [property: JsonPropertyName("violations")] string[]? Violations);
 }

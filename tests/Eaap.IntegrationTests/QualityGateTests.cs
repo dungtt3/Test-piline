@@ -38,18 +38,23 @@ public class QualityGateTests(EaapApiFactory factory)
         Assert.True(job.GetProperty("gateEvaluation").GetProperty("passed").GetBoolean());
     }
 
+    private OpaQualityGate NewGate() =>
+        new(new HttpClient { BaseAddress = new Uri(factory.OpaBaseUrl) },
+            Options.Create(new OpaOptions { BaseUrl = factory.OpaBaseUrl }));
+
+    private static readonly IReadOnlyDictionary<string, double> NoMetrics = new Dictionary<string, double>();
+    private static readonly IReadOnlyDictionary<string, int> NoRules = new Dictionary<string, int>();
+
+    // Lenient defaults matching the platform config: warnings 100, new-warnings disabled,
+    // no coverage floor, no failing tests allowed.
+    private static GateThresholds Defaults(int maxWarnings = 100) => new(maxWarnings, -1, 0, 0);
+
     [Fact]
     public async Task MaxWarningsZero_WarningsOnly_GateFails()
     {
-        // Direct OPA evaluation with the strict threshold from M6 acceptance criteria (b).
-        using var httpClient = new HttpClient { BaseAddress = new Uri(factory.OpaBaseUrl) };
-        var gate = new OpaQualityGate(httpClient, Options.Create(new OpaOptions
-        {
-            BaseUrl = factory.OpaBaseUrl,
-            MaxWarnings = 0
-        }));
-
-        var result = await gate.EvaluateAsync(new GateSummary(0, 2, new Dictionary<string, int> { ["semi"] = 2 }));
+        var result = await NewGate().EvaluateAsync(
+            new GateSummary(0, 2, 0, new Dictionary<string, int> { ["semi"] = 2 }),
+            NoMetrics, Defaults(maxWarnings: 0));
 
         Assert.False(result.Passed);
         Assert.Contains(result.Violations, v => v.Contains("warningCount=2 > max 0"));
@@ -58,17 +63,71 @@ public class QualityGateTests(EaapApiFactory factory)
     [Fact]
     public async Task DefaultThresholds_FewWarnings_GatePasses()
     {
-        using var httpClient = new HttpClient { BaseAddress = new Uri(factory.OpaBaseUrl) };
-        var gate = new OpaQualityGate(httpClient, Options.Create(new OpaOptions
-        {
-            BaseUrl = factory.OpaBaseUrl,
-            MaxWarnings = 100
-        }));
-
-        var result = await gate.EvaluateAsync(new GateSummary(0, 12, new Dictionary<string, int> { ["semi"] = 12 }));
+        var result = await NewGate().EvaluateAsync(
+            new GateSummary(0, 12, 0, new Dictionary<string, int> { ["semi"] = 12 }),
+            NoMetrics, Defaults());
 
         Assert.True(result.Passed);
         Assert.Empty(result.Violations);
+    }
+
+    [Fact]
+    public async Task NewWarnings_OverThreshold_GateFails()
+    {
+        // AC (b): newWarningCount=1 with maxNewWarnings=0.
+        var result = await NewGate().EvaluateAsync(
+            new GateSummary(0, 5, 1, NoRules), NoMetrics, Defaults() with { MaxNewWarnings = 0 });
+
+        Assert.False(result.Passed);
+        Assert.Contains(result.Violations, v => v.Contains("newWarningCount=1 > max 0"));
+    }
+
+    [Fact]
+    public async Task NewWarnings_FirstScan_NotFailedWhenThresholdDisabled()
+    {
+        // Default maxNewWarnings=-1: a first scan where everything is new must still pass.
+        var result = await NewGate().EvaluateAsync(
+            new GateSummary(0, 5, 5, NoRules), NoMetrics, Defaults());
+
+        Assert.True(result.Passed);
+    }
+
+    [Fact]
+    public async Task Coverage_BelowFloor_GateFails_AboveFloor_Passes()
+    {
+        // AC (a): 82.5% coverage passes at minCoverageLine=80, fails at 90.
+        var metrics = new Dictionary<string, double> { ["coverage.line"] = 82.5 };
+
+        var pass = await NewGate().EvaluateAsync(
+            new GateSummary(0, 0, 0, NoRules), metrics, Defaults() with { MinCoverageLine = 80 });
+        Assert.True(pass.Passed);
+
+        var fail = await NewGate().EvaluateAsync(
+            new GateSummary(0, 0, 0, NoRules), metrics, Defaults() with { MinCoverageLine = 90 });
+        Assert.False(fail.Passed);
+        Assert.Contains(fail.Violations, v => v.Contains("coverage.line=82.5 < min 90"));
+    }
+
+    [Fact]
+    public async Task Coverage_MetricMissing_DoesNotFail_ButRecordsSkippedNote()
+    {
+        var result = await NewGate().EvaluateAsync(
+            new GateSummary(0, 0, 0, NoRules), NoMetrics, Defaults() with { MinCoverageLine = 80 });
+
+        Assert.True(result.Passed);
+        Assert.Contains(result.Violations, v => v.Contains("skipped") && v.Contains("coverage"));
+    }
+
+    [Fact]
+    public async Task TestsFailed_OverThreshold_GateFails()
+    {
+        var metrics = new Dictionary<string, double> { ["tests.failed"] = 2, ["tests.total"] = 40 };
+
+        var result = await NewGate().EvaluateAsync(
+            new GateSummary(0, 0, 0, NoRules), metrics, Defaults());
+
+        Assert.False(result.Passed);
+        Assert.Contains(result.Violations, v => v.Contains("tests.failed=2 > max 0"));
     }
 
     private async Task<(Guid JobId, Guid RunId)> SeedJobAsync()

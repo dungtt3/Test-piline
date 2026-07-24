@@ -79,7 +79,14 @@
 - [x] API: `GET /jobs/{id}/warnings?isNew=true|false` (+ cột `IsNew` trong `WarningDto`); `GET /repositories/{id}/baseline?status=` (paged, `BaselineDto`)
 - [x] AC: integration 3 job liên tiếp → job1 5 baseline; job2 1 IsNew + 2 Resolved (chỉ ruleF mới); job3 giống job2 → 0 IsNew, 0 resolve mới; + test API filter isNew và baseline status
 - [x] 3 unit test BaselineService (feature branch không đụng baseline; reactivate; skip resolve khi thiếu analyzer)
-## M6 — Gate per-repository ⏳
+## M6 — Gate per-repository ✅
+- [x] `GateSummary` thêm `NewWarningCount`; `IQualityGate.EvaluateAsync(summary, metrics, thresholds)`; `GateThresholds` record
+- [x] rego mở rộng: fail `tests.failed > maxTestsFailed`, `newWarningCount > maxNewWarnings` (âm = tắt), `coverage.line < minCoverageLine` (chỉ khi metric tồn tại); thiếu coverage → note "skipped", không fail; `pass = không có failure`, `violations = failures ∪ notes`
+- [x] Default thresholds hợp lý: maxWarnings=100, maxNewWarnings=-1 (tắt — scan đầu không fail vì mọi warning đều mới), minCoverageLine=0 (tắt), maxTestsFailed=0 (nghiêm, chỉ áp khi repo chạy test)
+- [x] `GatePolicyBinding` override từng key; consumer gom metrics từ MetricSet + tính newWarningCount + resolve thresholds
+- [x] API: `PUT/GET /repositories/{id}/gate`
+- [x] AC: (a) coverage 82.5% pass mặc định → đặt binding minCoverageLine=90 → GateFailed (chạy thật qua API+pipeline); (b) newWarningCount=1, maxNewWarnings=0 → GateFailed; + tests.failed, skipped-note, binding round-trip
+- [x] **rego bug bắt được:** `%.2f` với JSON `90` (int) → `%!f(int=90)`; đổi sang `%v`. Và MetricsIngestionTest lộ đúng: metrics tests.failed=2 giờ làm GateFailed (metrics chảy vào gate)
 ## M7 — TrendPoint + Grafana ⏳
 ## M8 — README + tổng kết ⏳
 
