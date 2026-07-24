@@ -1,0 +1,20 @@
+# Provisioned automatically on Grafana start. Connects to Postgres as the read-only
+# grafana_ro role created by the Phase2_TestQuality migration (ADR-010): the dashboard
+# datasource physically cannot mutate analysis data.
+apiVersion: 1
+
+datasources:
+  - name: EAAP
+    type: postgres
+    uid: eaap-postgres
+    access: proxy
+    url: postgres:5432
+    user: grafana_ro
+    isDefault: true
+    jsonData:
+      database: eaap
+      sslmode: disable
+      postgresVersion: 1600
+    secureJsonData:
+      password: ${EAAP_GRAFANA_RO_PASSWORD}
+    editable: false

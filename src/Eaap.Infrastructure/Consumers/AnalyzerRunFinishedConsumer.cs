@@ -2,6 +2,7 @@ using System.Text.Json;
 using Eaap.Application;
 using Eaap.Domain;
 using Eaap.Infrastructure.Baselines;
+using Eaap.Infrastructure.Trends;
 using Eaap.Domain.Entities;
 using Eaap.Domain.Events;
 using Eaap.Infrastructure.Ingestion;
@@ -24,6 +25,7 @@ public class AnalyzerRunFinishedConsumer(
     SarifIngestionService ingestionService,
     MetricsIngestionService metricsIngestionService,
     BaselineService baselineService,
+    TrendService trendService,
     IQualityGate qualityGate,
     IOptions<OpaOptions> opaOptions,
     ILogger<AnalyzerRunFinishedConsumer> logger) : IConsumer<AnalyzerRunFinished>
@@ -123,6 +125,7 @@ public class AnalyzerRunFinishedConsumer(
             return;
         }
 
+        var baseline = new BaselineOutcome(0, 0);
         if (job.AnalyzerRuns.Any(r => r.Status == AnalyzerRunStatus.Failed))
         {
             job.Status = JobStatus.Failed;
@@ -130,7 +133,7 @@ public class AnalyzerRunFinishedConsumer(
         else
         {
             // Cross-job dedup runs before the gate so newWarningCount is available to it (M6).
-            await baselineService.ProcessAsync(job.Id, context.CancellationToken);
+            baseline = await baselineService.ProcessAsync(job.Id, context.CancellationToken);
 
             var gate = await EvaluateGateAsync(job, context.CancellationToken);
             job.Status = gate.Passed ? JobStatus.Succeeded : JobStatus.GateFailed;
@@ -138,6 +141,13 @@ public class AnalyzerRunFinishedConsumer(
         }
 
         job.FinishedAt = DateTimeOffset.UtcNow;
+
+        // A finished job on the default branch contributes one trend point (Succeeded or GateFailed).
+        if (job.Status is JobStatus.Succeeded or JobStatus.GateFailed)
+        {
+            await trendService.RecordAsync(job.Id, baseline, context.CancellationToken);
+        }
+
         await db.SaveChangesAsync(context.CancellationToken);
         await context.Publish(new JobFinished(job.Id, job.Status.ToString()), context.CancellationToken);
         logger.LogInformation("Job {JobId} finished with status {Status}", job.Id, job.Status);

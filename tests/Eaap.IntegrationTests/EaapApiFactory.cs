@@ -48,6 +48,9 @@ public class EaapApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public string OpaBaseUrl => $"http://{_opa.Hostname}:{_opa.GetMappedPublicPort(8181)}";
 
+    /// <summary>Connection string to the test Postgres (as the owner). Tests can swap in grafana_ro.</summary>
+    public string PostgresConnectionString => _postgres.GetConnectionString();
+
     public IAmazonS3 CreateS3Client() => new AmazonS3Client(
         "eaap",
         "eaap-test-secret",

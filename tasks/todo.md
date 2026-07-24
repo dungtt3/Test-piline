@@ -87,7 +87,12 @@
 - [x] API: `PUT/GET /repositories/{id}/gate`
 - [x] AC: (a) coverage 82.5% pass mặc định → đặt binding minCoverageLine=90 → GateFailed (chạy thật qua API+pipeline); (b) newWarningCount=1, maxNewWarnings=0 → GateFailed; + tests.failed, skipped-note, binding round-trip
 - [x] **rego bug bắt được:** `%.2f` với JSON `90` (int) → `%!f(int=90)`; đổi sang `%v`. Và MetricsIngestionTest lộ đúng: metrics tests.failed=2 giờ làm GateFailed (metrics chảy vào gate)
-## M7 — TrendPoint + Grafana ⏳
+## M7 — TrendPoint + Grafana ✅
+- [x] `TrendService` ghi 1 TrendPoint/job kết thúc (Succeeded/GateFailed) trên default branch; idempotent (unique JobId + check tồn tại); lấy new/resolved từ `BaselineOutcome`
+- [x] docker-compose thêm Grafana + provisioning: datasource Postgres qua `grafana_ro` (password từ env), dashboard 4 panel (Warning total+errors, New vs Resolved, Coverage %, Tests failed), biến `$repository` lấy từ TrendPoints (vì grafana_ro không có quyền đọc Repositories)
+- [x] API `GET /repositories/{id}/trend?from=&to=`
+- [x] AC: integration 2 job → TrendPoint đúng số (WarningTotal/New/Resolved/CoverageLine); API trả đúng thứ tự thời gian; **grafana_ro SELECT TrendPoints được nhưng INSERT/UPDATE bị từ chối (SqlState 42501)**
+- [x] Nghiệm thu Grafana thật (live smoke): container start, datasource `grafana_ro` kết nối Postgres OK, dashboard `eaap-trend` provisioned
 ## M8 — README + tổng kết ⏳
 
 ---

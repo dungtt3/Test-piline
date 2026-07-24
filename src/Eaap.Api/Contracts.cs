@@ -60,3 +60,15 @@ public record GateBindingResponse(
     string? PolicyName,
     IReadOnlyDictionary<string, double> Thresholds,
     DateTimeOffset? UpdatedAt);
+
+public record TrendPointDto(
+    Guid JobId,
+    string CommitSha,
+    int WarningTotal,
+    int WarningNew,
+    int WarningResolved,
+    int ErrorCount,
+    double? CoverageLine,
+    int? TestsTotal,
+    int? TestsFailed,
+    DateTimeOffset CreatedAt);

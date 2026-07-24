@@ -1,0 +1,14 @@
+# Tells Grafana to load dashboard JSON files from this folder on startup.
+apiVersion: 1
+
+providers:
+  - name: EAAP
+    orgId: 1
+    folder: EAAP
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false

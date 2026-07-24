@@ -193,6 +193,41 @@ public static class RepositoryEndpoints
         .Produces<GateBindingResponse>()
         .Produces(StatusCodes.Status404NotFound);
 
+        repositories.MapGet("/{id:guid}/trend", async (
+            Guid id,
+            EaapDbContext db,
+            CancellationToken ct,
+            DateTimeOffset? from,
+            DateTimeOffset? to) =>
+        {
+            if (!await db.Repositories.AnyAsync(r => r.Id == id, ct))
+            {
+                return Results.NotFound();
+            }
+
+            var query = db.TrendPoints.AsNoTracking().Where(t => t.RepositoryId == id);
+            if (from is { } f)
+            {
+                query = query.Where(t => t.CreatedAt >= f);
+            }
+            if (to is { } t2)
+            {
+                query = query.Where(t => t.CreatedAt <= t2);
+            }
+
+            var points = await query
+                .OrderBy(t => t.CreatedAt)
+                .Select(t => new TrendPointDto(
+                    t.JobId, t.CommitSha, t.WarningTotal, t.WarningNew, t.WarningResolved,
+                    t.ErrorCount, t.CoverageLine, t.TestsTotal, t.TestsFailed, t.CreatedAt))
+                .ToListAsync(ct);
+
+            return Results.Ok(points);
+        })
+        .WithSummary("Get the repository's trend points over time (for dashboards)")
+        .Produces<List<TrendPointDto>>()
+        .Produces(StatusCodes.Status404NotFound);
+
         return group;
     }
 }
