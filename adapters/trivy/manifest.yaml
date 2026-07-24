@@ -1,0 +1,17 @@
+id: trivy                     # unique, lowercase
+name: Trivy
+version: "1.0.0"
+image: eaap/adapter-trivy:latest
+mode: native-sarif            # native-sarif | converter | query
+category: security            # phase 3: lint|test|coverage|security|dependency|runtime
+timeoutSeconds: 900
+resources:
+  cpu: "1"
+  memory: 1Gi
+env:
+  # DB is frozen at image build time (ADR-011); severities to report.
+  TRIVY_SKIP_DB_UPDATE: "true"
+  TRIVY_SEVERITY: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+notes: >
+  Scans the current snapshot state only (no git history). Vulnerability DB is
+  frozen to the image build date; rebuild the image to refresh it.
